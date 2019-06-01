@@ -1,0 +1,19 @@
+{
+    "id": "GnXFxg9HEolgFn9",
+    "url": "https://www.discogs.com/Deep-Purple-Made-In-Japan/master/2133",
+    "loadedUrl": "https://www.discogs.com/Deep-Purple-Made-In-Japan/master/2133",
+    "uniqueKey": "https://www.discogs.com/Deep-Purple-Made-In-Japan/master/2133",
+    "method": "GET",
+    "payload": null,
+    "noRetry": false,
+    "retryCount": 3,
+    "errorMessages": [
+        "ReferenceError: context is not defined\n    at d:\\IGOR\\ETF backup\\PSZ\\crawler\\helper.js:8:29\n    at CheerioCrawler.handlePageFunction (d:\\IGOR\\ETF backup\\PSZ\\crawler\\main.js:23:19)\n    at CheerioCrawler._handleRequestFunction (d:\\IGOR\\ETF backup\\PSZ\\crawler\\node_modules\\apify\\build\\cheerio_crawler.js:377:50)\n    at process._tickCallback (internal/process/next_tick.js:68:7)",
+        "ReferenceError: context is not defined\n    at d:\\IGOR\\ETF backup\\PSZ\\crawler\\helper.js:8:29\n    at CheerioCrawler.handlePageFunction (d:\\IGOR\\ETF backup\\PSZ\\crawler\\main.js:23:19)\n    at CheerioCrawler._handleRequestFunction (d:\\IGOR\\ETF backup\\PSZ\\crawler\\node_modules\\apify\\build\\cheerio_crawler.js:377:50)\n    at process._tickCallback (internal/process/next_tick.js:68:7)",
+        "ReferenceError: context is not defined\n    at d:\\IGOR\\ETF backup\\PSZ\\crawler\\helper.js:8:29\n    at CheerioCrawler.handlePageFunction (d:\\IGOR\\ETF backup\\PSZ\\crawler\\main.js:23:19)\n    at CheerioCrawler._handleRequestFunction (d:\\IGOR\\ETF backup\\PSZ\\crawler\\node_modules\\apify\\build\\cheerio_crawler.js:377:50)\n    at process._tickCallback (internal/process/next_tick.js:68:7)",
+        "ReferenceError: context is not defined\n    at d:\\IGOR\\ETF backup\\PSZ\\crawler\\helper.js:8:29\n    at CheerioCrawler.handlePageFunction (d:\\IGOR\\ETF backup\\PSZ\\crawler\\main.js:23:19)\n    at CheerioCrawler._handleRequestFunction (d:\\IGOR\\ETF backup\\PSZ\\crawler\\node_modules\\apify\\build\\cheerio_crawler.js:377:50)\n    at process._tickCallback (internal/process/next_tick.js:68:7)"
+    ],
+    "headers": {},
+    "userData": {},
+    "handledAt": "2019-05-26T09:23:07.716Z"
+}
