@@ -25,7 +25,7 @@ Apify.main(async () => {
     const baseDomain = 'https://www.discogs.com';
     const requestQueue = await Apify.openRequestQueue();
     const sources = [
-        'https://www.discogs.com/Deep-Purple-Made-In-Japan/master/2133'
+        'https://www.discogs.com/Deep-Purple-Made-In-Japan/release/8428577'
     ];
 
     const requestList = await Apify.openRequestList('categories', sources);
