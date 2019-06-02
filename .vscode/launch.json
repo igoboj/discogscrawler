@@ -6,12 +6,6 @@
     "configurations": [
         {
             "type": "node",
-            "request": "launch",
-            "name": "Launch speedtest",
-            "program": "${workspaceFolder}/speedTest.js"
-        },
-        {
-            "type": "node",
             "request": "attach",
             "name": "Attach by Process ID",
             "processId": "${command:PickProcess}"
@@ -34,7 +28,12 @@
             "request": "launch",
             "name": "Launch Program",
             "program": "${workspaceFolder}\\crawler\\main.js",
-        }
-
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch speedtest",
+            "program": "${workspaceFolder}/speedTest.js"
+        },
     ]
 }

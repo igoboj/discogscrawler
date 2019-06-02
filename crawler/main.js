@@ -42,7 +42,6 @@ Apify.main(async () => {
     }
     
     const crawler = new Apify.CheerioCrawler({
-        maxRequestsPerCrawl: 20,
         requestList,
         requestQueue,
         handlePageFunction: handlePageFunction,

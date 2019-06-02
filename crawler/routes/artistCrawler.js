@@ -2,13 +2,12 @@ const Apify = require('apify');
 const { utils: { log } } = Apify;
 
 const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }) => {
-    const title = $('title').text();
-    log.info(`The title of "${request.url}" is: ${title}.`);
+    const title = await $('title').text();
 
     let artistInfo = {};
 
-    log.info("--------------");
-    let jsonLD = $('script[type="application/ld+json"]');
+
+    let jsonLD = await $('script[type="application/ld+json"]');
     let jsonLDParsed = JSON.parse(jsonLD.html());
 
     artistInfo.name = jsonLDParsed.member[0].name;
@@ -17,7 +16,12 @@ const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }) => {
     artistInfo.description = jsonLDParsed.description;
     artistInfo.siteList = jsonLDParsed.sameAs;
 
-    const $artistCreditsWrapper = $('ul.facets_nav > li a.credit_type');
+    
+    log.info("--------------");
+    log.info(`ARTIST - ${artistInfo.name} [${artistInfo.id}]`);
+    log.info("--------------");
+
+    const $artistCreditsWrapper = await $('ul.facets_nav > li a.credit_type');
 
     for (i = 0; i < $artistCreditsWrapper.length; i++) {
         let property = $artistCreditsWrapper[i].attribs["data-credit-subtype"];
@@ -29,7 +33,7 @@ const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }) => {
         artistInfo[creditType][property] = countAppearances;
     }
 
-    const $artistProfileWrapper = $('div.profile > div.head');
+    const $artistProfileWrapper = await $('div.profile > div.head');
 
     let Aliases = [];
     for (i = 0; i < $artistProfileWrapper.length; i++) {
@@ -44,9 +48,8 @@ const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }) => {
             artistInfo.aliases = Aliases;
         }
     }
-    log.info("ARTIST");
-    log.info("--------------");
-    log.info(JSON.stringify(artistInfo));
+
+    //log.info(JSON.stringify(artistInfo));
     log.info("--------------");
 
     // TODO add images 
