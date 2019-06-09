@@ -25,7 +25,7 @@ Apify.main(async () => {
     const baseDomain = 'https://www.discogs.com';
     const requestQueue = await Apify.openRequestQueue();
     const sources = [
-        'https://www.discogs.com/Deep-Purple-Made-In-Japan/master/2133'
+        'https://www.discogs.com/search/?limit=250&sort=title%2Casc&layout=sm&country_exact=Serbia'
     ];
 
     const requestList = await Apify.openRequestList('categories', sources);
@@ -68,7 +68,6 @@ Apify.main(async () => {
     log.info('<<<<<<<<<<>>>>>>>>>>');
     
     await crawler.run();
-    log.info('Actor finished.');
 
     const endTime = new Date();
     log.info('<<<<<<<<<<>>>>>>>>>>');

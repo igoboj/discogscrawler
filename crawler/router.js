@@ -4,7 +4,8 @@ const ArtistCrawler = require('./routes/artistCrawler');
 const CompositionCrawler = require('./routes/compositionCrawler.js');
 const LabelCrawler = require('./routes/labelCrawler.js');
 const MasterCrawler = require('./routes/masterCrawler.js');
-const ReleaseCrawler = require('./routes/releaseCrawler');
+const ReleaseCrawler = require('./routes/releaseCrawler.js');
+const SearchCrawler = require('./routes/searchCrawler.js');
 const { utils: { log } } = Apify;
 
 function sleep(millis) {
@@ -12,6 +13,7 @@ function sleep(millis) {
 }
 
 let counters = {
+    searchpage: 0,
     master: 0,
     release: 0,
     composition: 0,
@@ -44,8 +46,11 @@ function createRouter(globalContext) {
 
         const urlArr = request.url.split('/').slice(2);
         let route;
-
-        if (urlArr[2] === "master") {
+        if (urlArr[1] === "search") {
+            counters.searchpage++;
+            route = SearchCrawler.crawlSearch;
+            
+        } else if (urlArr[2] === "master") {
             counters.master++;
             route = MasterCrawler.crawlMaster;
 
