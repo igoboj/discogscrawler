@@ -11,7 +11,7 @@ const crawlComposition = async ({ request, $ }, { requestQueue, baseDomain }) =>
     const songTitle = dsData.pageObject.title;
     const compId = dsData.pageObject.objectId;
 
-    log.info("--------------");
+    log.info("=================");
     log.info(`COMPOSITION - ${songTitle} [${compId}]`);
     log.info("--------------");
 
@@ -79,7 +79,7 @@ const crawlComposition = async ({ request, $ }, { requestQueue, baseDomain }) =>
     };
 
     //log.info(JSON.stringify(compositionInfo));
-    log.info("--------------");
+    log.info("=================");
 
     // TODO add youtube links to compositions
     // 

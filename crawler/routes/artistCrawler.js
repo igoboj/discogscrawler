@@ -17,7 +17,7 @@ const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }) => {
     artistInfo.siteList = jsonLDParsed.sameAs;
 
     
-    log.info("--------------");
+    log.info("=================");
     log.info(`ARTIST - ${artistInfo.name} [${artistInfo.id}]`);
     log.info("--------------");
 
@@ -50,14 +50,10 @@ const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }) => {
     }
 
     //log.info(JSON.stringify(artistInfo));
-    log.info("--------------");
+    log.info("=================");
 
     // TODO add images 
     // 
 };
-
-async function handleArtistList(list, baseDomain, requestQueue, $) {
-
-}
 
 exports.crawlArtist = crawlArtist;

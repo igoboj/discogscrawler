@@ -3,8 +3,8 @@ const { utils: { log } } = Apify;
 
 const crawlMaster = async ({ request, $ }, { requestQueue, baseDomain }) => {
     const title = $('title');
-    log.info("--------------");
-    log.info(`RELEASE - ${title.text()} []`);
+    log.info("=================");
+    log.info(`MASTER - ${title.text()} []`);
     log.info("--------------");
 
 
@@ -27,7 +27,20 @@ const crawlMaster = async ({ request, $ }, { requestQueue, baseDomain }) => {
 
     let enqueued = await Apify.utils.enqueueLinks(optionsTracks);
 
-    console.log(`Enqueued ${enqueued.length} Tracks.`);
+    log.info(`Enqueued ${enqueued.length} Tracks from Master.`);
+
+    const optionsReleases = {
+        $,
+        baseUrl: baseDomain,
+        pseudoUrls: [`${baseDomain}/[.*]/release/[.*]`],
+        requestQueue,
+    };
+
+    enqueued = await Apify.utils.enqueueLinks(optionsReleases);
+
+    log.info(`Enqueued ${enqueued.length} Relases from Master.`);
+    
+    log.info("=================");
 };
 
 exports.crawlMaster = crawlMaster;
