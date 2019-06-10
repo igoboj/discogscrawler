@@ -25,7 +25,7 @@ Apify.main(async () => {
     const baseDomain = 'https://www.discogs.com';
     const requestQueue = await Apify.openRequestQueue();
     const sources = [
-        'https://www.discogs.com/search/?limit=250&sort=title%2Casc&layout=sm&country_exact=Serbia'
+        'https://www.discogs.com/search/?country_exact=Yugoslavia'
     ];
 
     const requestList = await Apify.openRequestList('categories', sources);
@@ -41,6 +41,10 @@ Apify.main(async () => {
         log.debug('Debug message', { debugData: 'hello' }); // doesn't print anything
 
         await URLrouter(context);
+
+        const timeOutLength = 0.4;
+        var waitTill = new Date(new Date().getTime() + timeOutLength * 1000);
+        while (waitTill > new Date()) { };
     }
 
     const handleFailFunction = async (request, error) => {

@@ -23,7 +23,8 @@ let counters = {
 }
 
 let timeOuts = 0;
-const timeOutLength = 5;
+let timeOutIncrement = 2;
+let timeOutLength = 1;
 
 function createRouter(globalContext) {
     return async function (requestContext) {
@@ -39,9 +40,14 @@ function createRouter(globalContext) {
             log.error(`Timeout`);
             var waitTill = new Date(new Date().getTime() + timeOutLength * 1000);
             while (waitTill > new Date()) { };
-            timeOuts++;
+            timeOuts += timeOutLength;
+            if (timeOutLength < 20) {
+                timeOutLength += timeOutIncrement;
+            }
             throw "429_too_many_requests_429";
         }
+
+        timeOutLength = 1;
 
 
         const urlArr = request.url.split('/').slice(2);
@@ -49,7 +55,7 @@ function createRouter(globalContext) {
         if (urlArr[1] === "search") {
             counters.searchpage++;
             route = SearchCrawler.crawlSearch;
-            
+
         } else if (urlArr[2] === "master") {
             counters.master++;
             route = MasterCrawler.crawlMaster;
@@ -78,14 +84,13 @@ function createRouter(globalContext) {
         } else {
 
             log.info("Processed: " + JSON.stringify(counters));
-            counters.label++;
             return route(requestContext, globalContext);
         }
     }
 }
 
 function getTotalTimeoutTime() {
-    return timeOuts * timeOutLength;
+    return timeOuts;
 }
 
 exports.createRouter = createRouter;
