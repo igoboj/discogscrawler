@@ -17,29 +17,31 @@ const crawlSearch = async ({ request, $ }, { requestQueue, baseDomain }) => {
         // Starting SearchPage
 
         let decadeWrapper = $('ul.facets_nav > li > a');
-        let max = 1800;
-        let min = 2020;
         for (i = decadeWrapper.length - 1; i >= 0; i--) {
             let decadeHref = decadeWrapper[i].attribs.href;
             let decadeMatch = decadeHref.match(/decade=([0-9]+)/i);
             if (decadeMatch) {
+                let decadeItemCount = parseInt(decadeWrapper[i].children[1].children[0].data.replace(",", ""), 10);
+
                 let decade = parseInt(decadeMatch[1], 10);
-                if (decade < min) {
-                    min = decade;
-                }
-                if (decade > max) {
-                    max = decade;
+                let UrlQueryParams = "&limit=250&sort=title%2Casc&layout=sm";
+                if (decadeItemCount < 10000) {
+                    // Enqueue all
+                    let decadeQueryParam = "&decade=" + decade.toString();
+                    requestQueue.addRequest({ url: request.url + UrlQueryParams + decadeQueryParam + "&page=1" });
+                } else {
+                    // Split by year
+                    for (j = decade; j <= (decade + 9); j++) {
+                        let yearQueryParam = "&year=" + j.toString();
+                        requestQueue.addRequest({ url: request.url + UrlQueryParams + yearQueryParam });
+                    }
                 }
             } else {
                 break;
             }
         }
 
-        let UrlQueryParams = "&limit=250&sort=title%2Casc&layout=sm";
-        for (i = min; i <= (max + 9); i++) {
-            let yearQueryParam = "&year=" + i.toString();
-            requestQueue.addRequest({ url: request.url + UrlQueryParams + yearQueryParam });
-        }
+
     } else if (!pageNumberMatch) {
         // Year SearchPage
 
