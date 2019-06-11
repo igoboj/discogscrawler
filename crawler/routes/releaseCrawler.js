@@ -16,7 +16,8 @@ const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }) => {
     let dsDataScript = $('script[id="dsdata"]');
     let dsData = JSON.parse(dsDataScript.text().trim().slice(42, -15));
 
-    let trackWrapper = $('tr.tracklist_track');
+    let trackTitles = $('td.tracklist_track_title > a');
+    let trackDurations = $('td.tracklist_track_duration > span');
     let masterWrapper = $('a[id="all-versions-link"]');
     let labelWrapper = $('div.profile>div.content>a');
     for (i = 0; i < labelWrapper.length; i++) {
@@ -33,13 +34,14 @@ const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }) => {
         }
     }
 
+    let enqueueTracks = false;
     if (masterWrapper.length > 0) {
         let masterUrl = masterWrapper[0].attribs.href;
         let masterId = masterUrl.match(/.*\/master\/([0-9]+)/i)[1];
         requestQueue.addRequest({ url: baseDomain + "/rls/master/" + masterId });
         log.info(`Enqueued Master (${masterId}) - ${masterUrl} from Release.`);
     } else {
-        log.error("A Release has no Master!");
+        enqueueTracks = true;
     }
 
     releaseInfo.name = jsonLDParsed.name;
@@ -58,27 +60,30 @@ const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }) => {
     releaseInfo.artists = jsonLDParsed.releaseOf.byArtist;
     releaseInfo.country = jsonLDParsed.releasedEvent.location.name;
 
-    releaseInfo.tracks = new Array(trackWrapper.length);
+    releaseInfo.tracks = new Array(trackTitles.length);
     let releaseDuration = 0;
-    for (i = 0; i < trackWrapper.length; i++) {
-        if (trackWrapper[i].children.length === 5) {
-            continue;
-        }
 
-        let trackDuration = "00:00";
-        if (trackWrapper[i].children[5].children[1].children[0]) {
-            trackDuration = trackWrapper[i].children[5].children[1].children[0].data;
-        }
+    for (i = 0; i < trackTitles.length; i++) {
+
+        let trackDuration = trackDurations[i].children.length != 0 ? trackDurations[i].children[0].data : "00:00";
+
         releaseDuration += parseInt(trackDuration.match(/([0-9]+):([0-9]+)/i)[1], 10) * 60 +
             parseInt(trackDuration.match(/([0-9]+):([0-9]+)/i)[2], 10);
 
-        if (trackWrapper[i].children[3].children[0].attribs.href) {
-            const trackId = trackWrapper[i].children[3].children[0].attribs.href.match(/\/track\/(.+)/i)[1];
+        if (trackTitles[i].attribs.href) {
+            const trackId = trackTitles[i].attribs.href.match(/\/track\/(.+)/i)[1];
             releaseInfo.tracks[i] = trackId;
+            if (enqueueTracks) {
+                requestQueue.addRequest({ url: baseDomain + "/track/" + trackId });
+            }
         }
     }
+
     releaseInfo.releaseDuration = releaseDuration;
 
+    if (enqueueTracks) {
+        log.info(`Enqueued ${trackTitles.length} Tracks from Release.`);
+    }
     log.info("=================");
     /*
     const optionsLabels = {

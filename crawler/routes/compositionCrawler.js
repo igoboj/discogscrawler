@@ -37,41 +37,46 @@ const crawlComposition = async ({ request, $ }, { requestQueue, baseDomain }) =>
                 compositionInfo.releaseDate = compositionFact.children[2].data.trim();
                 break;
             case "Stats":
-                const factHave = compositionFact.children[3].children[0].data.trim().match(/Have: ([0-9]+)/i)[1];
-                const factWant = compositionFact.children[5].children[0].data.trim().match(/Want: ([0-9]+)/i)[1];
-                compositionInfo.have = parseInt(factHave, 10);
-                compositionInfo.want = parseInt(factWant, 10);
+                if (compositionFact.children[3]) {
+                    let factMatch = compositionFact.children[3].children[0].data.trim().match(/(Have|Want): ([0-9]+)/i);
+                    compositionInfo[factMatch[1]] = parseInt(factMatch[2], 10);
+                }
+
+                if (compositionFact.children[5]) {
+                    let factMatch = compositionFact.children[5].children[0].data.trim().match(/(Have|Want): ([0-9]+)/i);
+                    compositionInfo[factMatch[1]] = parseInt(factMatch[2], 10);
+                }
 
                 break;
             case "Notes":
                 compositionInfo.notes = compositionFact.children[3].children[1].children[0].data.trim();
                 break;
             case "written-by":
-                compositionInfo.writtenBy = await handleArtistList(compositionFact.children, requestQueue, $);
+                compositionInfo.writtenBy = await handleArtistList(compositionFact.children, requestQueue, baseDomain);
                 break;
             case "composed by":
-                compositionInfo.composedBy = await handleArtistList(compositionFact.children, requestQueue, $);
+                compositionInfo.composedBy = await handleArtistList(compositionFact.children, requestQueue, baseDomain);
                 break;
             case "concept by":
-                compositionInfo.conceptBy = await handleArtistList(compositionFact.children, requestQueue, $);
+                compositionInfo.conceptBy = await handleArtistList(compositionFact.children, requestQueue, baseDomain);
                 break;
             case "created by":
-                compositionInfo.createdBy = await handleArtistList(compositionFact.children, requestQueue, $);
+                compositionInfo.createdBy = await handleArtistList(compositionFact.children, requestQueue, baseDomain);
                 break;
             case "lyrics by":
-                compositionInfo.lyricsBy = await handleArtistList(compositionFact.children, requestQueue, $);
+                compositionInfo.lyricsBy = await handleArtistList(compositionFact.children, requestQueue, baseDomain);
                 break;
             case "music by":
-                compositionInfo.musicBy = await handleArtistList(compositionFact.children, requestQueue, $);
+                compositionInfo.musicBy = await handleArtistList(compositionFact.children, requestQueue, baseDomain);
                 break;
             case "arranged by":
-                compositionInfo.arrangedBy = await handleArtistList(compositionFact.children, requestQueue, $);
+                compositionInfo.arrangedBy = await handleArtistList(compositionFact.children, requestQueue, baseDomain);
                 break;
             case "programmed by":
-                compositionInfo.programmedBy = await handleArtistList(compositionFact.children, requestQueue, $);
+                compositionInfo.programmedBy = await handleArtistList(compositionFact.children, requestQueue, baseDomain);
                 break;
             case "songwriter":
-                compositionInfo.songwriters = await handleArtistList(compositionFact.children, requestQueue, $);
+                compositionInfo.songwriters = await handleArtistList(compositionFact.children, requestQueue, baseDomain);
                 break;
             default:
                 log.error(`Unscraped composition fact - ${factName}`);
@@ -125,19 +130,18 @@ function handleFacet(facetName, release, facetCounters, facetMapFunction) {
     }
 }
 
-async function handleArtistList(list, requestQueue, $) {
+async function handleArtistList(list, requestQueue, baseDomain) {
     let artistList = new Array((list.length - 3) / 2);
     let artistIndex = 0;
-    for (listIterator = 3; listIterator < list.length; listIterator++) {
+    for (listIterator = 3; listIterator < list.length; listIterator+=2) {
         let artistName = list[listIterator].children[3].children[1].children[0].data.trim();
         let artistId = list[listIterator].attribs.href.match(/.*\/artist\/([0-9]+)\-.*/i)[1];
-        let artistLink = list[listIterator++].attribs.href.match(/(.*)\/track/i)[1];
         artistList[artistIndex++] = {
             name: artistName,
             id: artistId,
         };
 
-        await requestQueue.addRequest({ url: artistLink });
+        await requestQueue.addRequest({ url: baseDomain + "/artist/" + artistId });
     }
     return artistList;
 }

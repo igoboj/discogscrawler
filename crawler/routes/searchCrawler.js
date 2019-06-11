@@ -64,8 +64,16 @@ const crawlSearch = async ({ request, $ }, { requestQueue, baseDomain }) => {
     } else {
         // Default SearchPage
         let pageNumber = request.url.match(/.*page=([0-9]+).*/i);
-        log.info("Processing page: " + pageNumber[1]);
-        // TODO queue albums
+        log.info("Processing search page: " + pageNumber[1]);
+
+        let searchResults = $('a.search_result_title');
+        for (i = 0; i < searchResults.length; i++) {
+            let resultMatch = searchResults[i].attribs.href.match(/.*\/(release|master)\/([0-9]+)$/i);
+            let resultId = resultMatch[2];
+            let resultType = resultMatch[1];
+            requestQueue.addRequest({ url: baseDomain + `/rls/${resultType}/${resultId}` });
+        }
+        log.info(`Enqueued: ${searchResults.length} Releases/Masters`);
     }
 
 

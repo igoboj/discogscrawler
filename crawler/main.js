@@ -20,12 +20,12 @@ function askQuestion(query) {
 
 
 Apify.main(async () => {
-    const ans = await askQuestion("Are you sure you want to deploy to PRODUCTION? ");
+    let ans = await askQuestion("Are you sure you want to deploy to PRODUCTION? ");
     log.info('Starting actor.');
     const baseDomain = 'https://www.discogs.com';
     const requestQueue = await Apify.openRequestQueue();
     const sources = [
-        'https://www.discogs.com/search/?country_exact=Yugoslavia'
+        'https://www.discogs.com/search/?country_exact=Montenegro'
     ];
 
     const requestList = await Apify.openRequestList('categories', sources);
@@ -40,10 +40,10 @@ Apify.main(async () => {
         log.info(`Processing ${request.url}`);
         log.debug('Debug message', { debugData: 'hello' }); // doesn't print anything
 
+        const timeOutLength = 0;
+        var waitTill = new Date(new Date().getTime() + timeOutLength * 1000);
         await URLrouter(context);
 
-        const timeOutLength = 0.4;
-        var waitTill = new Date(new Date().getTime() + timeOutLength * 1000);
         while (waitTill > new Date()) { };
     }
 
@@ -83,10 +83,11 @@ Apify.main(async () => {
 
     if (failedRequests.length > 0) {
         log.error(`Failed requests: ${failedRequests.length}`);
-        ans = await askQuestion("Do you wish to list all failed requests? y/n");
+        ans = await askQuestion("Do you wish to list all failed requests? y/n \n");
         if (ans === "Y" || ans === "y") {
             for (i = 0; i < failedRequests.length; i++) {
-                log.info(failedRequests[i].request.url);
+                log.info(failedRequests[i].request.request.url);
+                log.info(failedRequests[i].error);
             }
         }
     }
@@ -94,10 +95,10 @@ Apify.main(async () => {
     
     if (timeoutRequests.length > 0) {
         log.error(`Timeout requests: ${timeoutRequests.length}`);
-        ans = await askQuestion("Do you wish to list all failed requests? y/n");
+        ans = await askQuestion("Do you wish to list all failed requests? y/n \n");
         if (ans === "Y" || ans === "y") {
             for (i = 0; i < timeoutRequests.length; i++) {
-                log.info(timeoutRequests[i].request.url);
+                log.info(timeoutRequests[i].request.request.url);
             }
         }
 

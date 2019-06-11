@@ -7,7 +7,6 @@ const crawlMaster = async ({ request, $ }, { requestQueue, baseDomain }) => {
     log.info(`MASTER - ${title.text()} []`);
     log.info("--------------");
 
-
     let masterInfo = {};
 
     let jsonLD = $('script[type="application/ld+json"]');
