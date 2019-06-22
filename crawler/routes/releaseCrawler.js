@@ -1,7 +1,8 @@
 const Apify = require('apify');
+const sql = require("mssql");
 const { utils: { log } } = Apify;
 
-const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }) => {
+const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }, connectionPool) => {
     const title = $('title');
     log.info("=================");
     log.info(`RELEASE - ${title.text()} []`);
@@ -29,19 +30,22 @@ const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }) => {
 
             const labelUrl = labelWrapper[i].attribs.href;
             const labelId = labelUrl.match(/.*\/label\/([0-9]+).*/i)[1];
-            requestQueue.addRequest({ url: baseDomain + "/label/" + labelId });
+            //requestQueue.addRequest({ url: baseDomain + "/label/" + labelId });
             log.info(`Enqueued Label (${labelId}) - ${labelWrapper[i].attribs.href} from Release.`);
         }
     }
 
-    let enqueueTracks = false;
+    releaseInfo.id = parseInt(request.url.match(/.*\/release\/([0-9]+)/i)[1], 10);
+    let enqueueTracks = true;
     if (masterWrapper.length > 0) {
         let masterUrl = masterWrapper[0].attribs.href;
         let masterId = masterUrl.match(/.*\/master\/([0-9]+)/i)[1];
+        releaseInfo.masterId = masterId;
         requestQueue.addRequest({ url: baseDomain + "/rls/master/" + masterId });
         log.info(`Enqueued Master (${masterId}) - ${masterUrl} from Release.`);
     } else {
         enqueueTracks = true;
+        releaseInfo.masterId = null;
     }
 
     releaseInfo.name = jsonLDParsed.name;
@@ -74,43 +78,80 @@ const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }) => {
             const trackId = trackTitles[i].attribs.href.match(/\/track\/(.+)/i)[1];
             releaseInfo.tracks[i] = trackId;
             if (enqueueTracks) {
-                requestQueue.addRequest({ url: baseDomain + "/track/" + trackId });
+                //requestQueue.addRequest({ url: baseDomain + "/track/" + trackId });
             }
         }
     }
 
     releaseInfo.releaseDuration = releaseDuration;
+    insertData(connectionPool, releaseInfo);
 
     if (enqueueTracks) {
-        log.info(`Enqueued ${trackTitles.length} Tracks from Release.`);
+        //log.info(`Enqueued ${trackTitles.length} Tracks from Release.`);
     }
+    ////////////////////////////////
+
+    //log.info(`Release: ${JSON.stringify(releaseInfo)}`);
     log.info("=================");
-    /*
-    const optionsLabels = {
-        $,
-        baseUrl: baseDomain,
-        pseudoUrls: [`${baseDomain}/label/[.*]`],
-        requestQueue,
-    };
-
-    let enqueued = await Apify.utils.enqueueLinks(optionsLabels);
-
-    console.log(`Enqueued ${enqueued.length} Labels from Release.`);
-    */
-
-    /*
-    const optionsTracks = {
-        $,
-        baseUrl: baseDomain,
-        pseudoUrls: [`${baseDomain}/track/[.*]`],
-        requestQueue,
-    };
-
-    enqueued = await Apify.utils.enqueueLinks(optionsTracks);
-
-    console.log(`Enqueued ${enqueued.length} Tracks from Release.`);
-    */
 
 };
+
+async function insertData(connectionPool, releaseInfo) {
+
+    connectionPool.then(async (pool) =>  {
+        if (releaseInfo.masterId) {
+            const sqlRequest = new sql.Request(pool);
+            await sqlRequest
+                .input('masterId', sql.Int, releaseInfo.masterId)
+                .query('SELECT * FROM Master WHERE IdMaster=@masterId')
+                .then(async result => {
+                    if (result.recordset.length == 0) {
+                        const masterRequest = new sql.Request(pool);
+                        await masterRequest
+                            .input('id', sql.Int, releaseInfo.masterId)
+                            .input('have', sql.Int, 0)
+                            .input('want', sql.Int, 0)
+                            .input('published', sql.Int, 1800)
+                            .input('name', sql.NVarChar, "")
+                            .input('trackCount', sql.Int, 0)
+                            .query('INSERT INTO Master VALUES(@id,@have,@want,@published,@name,@trackCount)')
+                            .then(result => {
+                                log.info(`Inserted empty Master: ${result.rowsAffected}`);
+                            })
+                            .catch(err => {
+                                log.error(`Error while inserting row in Master: ${err.message}`);
+                            });
+                    }
+                })
+                .catch(err => {
+                    log.error(`Error while inserting row in Master: ${err.message}`);
+                });
+        }
+
+        const sqlRequest = new sql.Request(pool);
+        await sqlRequest
+            .input('id', sql.Int, releaseInfo.id)
+            .input('have', sql.Int, releaseInfo.have || 0)
+            .input('want', sql.Int, releaseInfo.want || 0)
+            .input('published', sql.Int, releaseInfo.datePublished)
+            .input('name', sql.NVarChar, releaseInfo.name)
+            .input('trackCount', sql.Int, releaseInfo.numTracks)
+            .input('description', sql.NVarChar, releaseInfo.description)
+            .input('ratingCount', sql.Int, releaseInfo.rating ? releaseInfo.rating.ratingCount : 0)
+            .input('ratingValue', sql.Float, releaseInfo.rating ? releaseInfo.rating.ratingValue : 0)
+            .input('format', sql.NVarChar, releaseInfo.format)
+            .input('country', sql.NVarChar, releaseInfo.country)
+            .input('duration', sql.Int, releaseInfo.releaseDuration)
+            .input('masterId', sql.Int, releaseInfo.masterId)
+            .query('INSERT INTO Release ([IdRelease],[Have],[Want],[Published],[Name],[TrackCount],[Description],[RatingCount],[RatingValue],[Format],[Country],[Duration],[IdMaster]) ' +
+                'VALUES(@id,@have,@want,@published,@name,@trackCount,@description,@ratingCount,@ratingValue,@format,@country,@duration,@masterId)')
+            .then(result => {
+                log.info(`Inserted row in Release: ${result.rowsAffected}`);
+            })
+            .catch(err => {
+                log.error(`Error while inserting row in Release: ${err.message}`);
+            });
+    });
+}
 
 exports.crawlRelease = crawlRelease;

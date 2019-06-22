@@ -23,11 +23,12 @@ let counters = {
 }
 
 let timeOuts = 0;
-let timeOutIncrement = 2;
-let timeOutLength = 1;
+let timeOutIncrement = 0;
+let timeOutDefaultLength = 0.2;
+let timeOutLength = 0.2;
 
 function createRouter(globalContext) {
-    return async function (requestContext) {
+    return async function (requestContext, connectionPool) {
         const { $, request } = requestContext;
 
         if ($('div#page_content > h1').length == 1 && $('div#page_content > h1')[0].children[0].data == "404! Oh no!") {
@@ -44,10 +45,11 @@ function createRouter(globalContext) {
             if (timeOutLength < 20) {
                 timeOutLength += timeOutIncrement;
             }
-            throw "429_too_many_requests_429";
+            await requestQueue.reclaimRequest(request);
+            return () => { };
         }
 
-        timeOutLength = 1;
+        timeOutLength = timeOutDefaultLength;
 
 
         const urlArr = request.url.split('/').slice(2);
@@ -66,14 +68,17 @@ function createRouter(globalContext) {
 
         } else if (urlArr[1] === "track" || urlArr[1] === "composition") {
             counters.track++;
+            return () => { };
             route = CompositionCrawler.crawlComposition;
 
         } else if (urlArr[1] === "artist") {
             counters.artist++;
+            return () => { };
             route = ArtistCrawler.crawlArtist;
 
         } else if (urlArr[1] === "label") {
             counters.label++;
+            return () => { };
             route = LabelCrawler.crawlLabel;
 
         }
@@ -84,7 +89,7 @@ function createRouter(globalContext) {
         } else {
 
             log.info("Processed: " + JSON.stringify(counters));
-            return route(requestContext, globalContext);
+            return route(requestContext, globalContext, connectionPool);
         }
     }
 }

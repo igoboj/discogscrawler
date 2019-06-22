@@ -1,7 +1,7 @@
 const Apify = require('apify');
 const { utils: { log } } = Apify;
 
-const crawlLabel = async ({ request, $ }, { requestQueue, baseDomain }) => {
+const crawlLabel = async ({ request, $ }, { requestQueue, baseDomain }, connectionPool) => {
     const title = $('title').text();
 
     let labelInfo = {};
@@ -20,6 +20,7 @@ const crawlLabel = async ({ request, $ }, { requestQueue, baseDomain }) => {
     log.info(`LABEL - ${labelInfo.name} [${labelInfo.id}]`);
     log.info("--------------");
 
+    //log.info(`Label: ${JSON.stringify(labelInfo)}`);
     log.info("=================");
 };
 

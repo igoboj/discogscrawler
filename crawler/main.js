@@ -2,8 +2,8 @@
 const Apify = require('apify');
 const router = require('./router');
 const readline = require('readline');
+const sql = require("mssql");
 const { utils: { log } } = Apify;
-const { URL } = require('url'); // <------ This is new.
 
 function askQuestion(query) {
     const rl = readline.createInterface({
@@ -18,14 +18,30 @@ function askQuestion(query) {
 }
 
 
-
 Apify.main(async () => {
+
     let ans = await askQuestion("Are you sure you want to deploy to PRODUCTION? ");
+
+    var config = {
+        user: 'sa',
+        password: 'Password1!',
+        server: 'localhost',
+        database: 'discogs'
+    };
+
+    const connectionPoolPromise = new sql.ConnectionPool(config);
+    const connectionPool = connectionPoolPromise.connect().then((pool) => {
+        log.info('Established SQLExpress connection pool.');
+        return pool;
+    }).catch((err) => {
+        if (err) console.log(err);
+    });
+
     log.info('Starting actor.');
     const baseDomain = 'https://www.discogs.com';
     const requestQueue = await Apify.openRequestQueue();
     const sources = [
-        'https://www.discogs.com/search/?country_exact=Montenegro'
+        'https://www.discogs.com/search/?country_exact=Serbia'
     ];
 
     const requestList = await Apify.openRequestList('categories', sources);
@@ -40,11 +56,10 @@ Apify.main(async () => {
         log.info(`Processing ${request.url}`);
         log.debug('Debug message', { debugData: 'hello' }); // doesn't print anything
 
-        const timeOutLength = 0;
-        var waitTill = new Date(new Date().getTime() + timeOutLength * 1000);
-        await URLrouter(context);
-
-        while (waitTill > new Date()) { };
+        await URLrouter(context, connectionPool);
+        await requestQueue.getInfo().then((queueInfo) => {
+            log.info(`Queue status: {total: ${queueInfo.totalRequestCount}, handled: ${queueInfo.handledRequestCount}, pending: ${queueInfo.pendingRequestCount}`);
+        });
     }
 
     const handleFailFunction = async (request, error) => {
@@ -63,6 +78,7 @@ Apify.main(async () => {
         handleFailedRequestFunction: handleFailFunction,
         handlePageFunction: handlePageFunction,
         maxRequestRetries: 5,
+        proxyUrls: ["http://localhost:8888"]
     });
 
     const startTime = new Date();
@@ -70,16 +86,18 @@ Apify.main(async () => {
     log.info('Starting the crawl.');
     log.info(startTime);
     log.info('<<<<<<<<<<>>>>>>>>>>');
-    
+
     await crawler.run();
 
     const endTime = new Date();
     log.info('<<<<<<<<<<>>>>>>>>>>');
     log.info('Actor finished.');
     log.info(endTime);
-    log.info(`Total duration: ${(endTime - startTime)/1000}s`);
+    log.info(`Total duration: ${(endTime - startTime) / 1000}s`);
     log.info(`Total time spent on timeouts was: ${router.getTotalTimeoutTime()}s`)
     log.info('<<<<<<<<<<>>>>>>>>>>');
+
+
 
     if (failedRequests.length > 0) {
         log.error(`Failed requests: ${failedRequests.length}`);
@@ -92,7 +110,7 @@ Apify.main(async () => {
         }
     }
 
-    
+
     if (timeoutRequests.length > 0) {
         log.error(`Timeout requests: ${timeoutRequests.length}`);
         ans = await askQuestion("Do you wish to list all failed requests? y/n \n");
@@ -104,4 +122,5 @@ Apify.main(async () => {
 
         // TODO retry
     }
+
 });

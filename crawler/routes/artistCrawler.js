@@ -1,7 +1,7 @@
 const Apify = require('apify');
 const { utils: { log } } = Apify;
 
-const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }) => {
+const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }, connectionPool) => {
     const title = $('title').text();
 
     let artistInfo = {};
@@ -49,7 +49,7 @@ const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }) => {
         }
     }
 
-    //log.info(JSON.stringify(artistInfo));
+    //log.info(`Artist: ${JSON.stringify(artistInfo)}`);
     log.info("=================");
 
     // TODO add images 

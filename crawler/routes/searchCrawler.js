@@ -4,13 +4,13 @@ const { utils: { log } } = Apify;
 
 const pageSize = 250;
 
-const crawlSearch = async ({ request, $ }, { requestQueue, baseDomain }) => {
+const crawlSearch = async ({ request, $ }, { requestQueue, baseDomain }, connectionPool) => {
     const title = $('title');
     log.info("=================");
     log.info(`SEARCH - ${title.text()} []`);
     log.info("--------------");
 
-    let defaultMatch = request.url.match(/.*\/search\/\?country_exact=([a-zA-Z]+)$/i);
+    let defaultMatch = request.url.match(/.*\/search\/\?.*country_exact=([a-zA-Z]+)$/i);
     let pageNumberMatch = request.url.match(/.*&page=([0-9]+)/i);
 
     if (defaultMatch && defaultMatch.length == 2) {
@@ -28,12 +28,12 @@ const crawlSearch = async ({ request, $ }, { requestQueue, baseDomain }) => {
                 if (decadeItemCount < 10000) {
                     // Enqueue all
                     let decadeQueryParam = "&decade=" + decade.toString();
-                    requestQueue.addRequest({ url: request.url + UrlQueryParams + decadeQueryParam + "&page=1" });
+                    requestQueue.addRequest({ url: request.url + UrlQueryParams + decadeQueryParam + "&page=1" }, { forefront: true });
                 } else {
                     // Split by year
                     for (j = decade; j <= (decade + 9); j++) {
                         let yearQueryParam = "&year=" + j.toString();
-                        requestQueue.addRequest({ url: request.url + UrlQueryParams + yearQueryParam });
+                        requestQueue.addRequest({ url: request.url + UrlQueryParams + yearQueryParam }, { forefront: true });
                     }
                 }
             } else {
@@ -58,7 +58,7 @@ const crawlSearch = async ({ request, $ }, { requestQueue, baseDomain }) => {
 
         const pageCount = Math.ceil(totalItemCount / pageSize);
         for (i = 1; i <= pageCount; i++) {
-            requestQueue.addRequest({ url: request.url + `&page=${i.toString()}` });
+            requestQueue.addRequest({ url: request.url + `&page=${i.toString()}` }, { forefront: true });
         }
         log.info(`Enqueued ${pageCount} search pages.`);
     } else {
@@ -72,6 +72,19 @@ const crawlSearch = async ({ request, $ }, { requestQueue, baseDomain }) => {
             let resultId = resultMatch[2];
             let resultType = resultMatch[1];
             requestQueue.addRequest({ url: baseDomain + `/rls/${resultType}/${resultId}` });
+        }
+
+        let pagination = $('strong.pagination_total');
+        let totalItemCount = 0;
+        if (pagination && pagination.length) {
+            const dotless = pagination[0].children[0].data.replace(",", "");
+            totalItemCount = parseInt(dotless.match(/.*of ([0-9]+)/i)[1], 10);
+            if (totalItemCount > 250 * pageNumber[1]) {
+                const nextSearchPage = "page=" + (parseInt(pageNumber[1], 10) + 1).toString(10);
+                requestQueue.addRequest({
+                    url: request.url.replace(/page=[0-9]+/i, nextSearchPage)
+                }, { forefront: true });
+            }
         }
         log.info(`Enqueued: ${searchResults.length} Releases/Masters`);
     }

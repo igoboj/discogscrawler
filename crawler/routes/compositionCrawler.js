@@ -1,7 +1,7 @@
 const Apify = require('apify');
 const { utils: { log } } = Apify;
 
-const crawlComposition = async ({ request, $ }, { requestQueue, baseDomain }) => {
+const crawlComposition = async ({ request, $ }, { requestQueue, baseDomain }, connectionPool) => {
     const title = $('title').text();
 
     let dsDataScript = $('script[id="dsdata"]');
@@ -83,7 +83,7 @@ const crawlComposition = async ({ request, $ }, { requestQueue, baseDomain }) =>
         }
     };
 
-    //log.info(JSON.stringify(compositionInfo));
+    //log.info(`Composition: ${JSON.stringify(compositionInfo)}`);
     log.info("=================");
 
     // TODO add youtube links to compositions
