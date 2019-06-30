@@ -1,11 +1,11 @@
-const Apify = require('apify');
-const { utils: { log } } = Apify;
+
+const log = require("./../log");
 
 const crawlComposition = async ({ request, $ }, { requestQueue, baseDomain }, connectionPool) => {
     const title = $('title').text();
 
     let dsDataScript = $('script[id="dsdata"]');
-    let dsData = JSON.parse(dsDataScript.text().trim().slice(42, -15));
+    dsDataScript[0].children[0].nodeValue.trim().slice(42, -15)
 
     let compositionInfo = {};
     const songTitle = dsData.pageObject.title;
@@ -141,7 +141,7 @@ async function handleArtistList(list, requestQueue, baseDomain) {
             id: artistId,
         };
 
-        await requestQueue.addRequest({ url: baseDomain + "/artist/" + artistId });
+        await requestQueue.add({ url: baseDomain + "/artist/" + artistId });
     }
     return artistList;
 }

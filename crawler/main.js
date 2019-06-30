@@ -1,9 +1,9 @@
 
-const Apify = require('apify');
 const router = require('./router');
 const readline = require('readline');
 const sql = require("mssql");
-const { utils: { log } } = Apify;
+const log = require("./log");
+const RequestQueue = require("./requestQueue");
 
 function askQuestion(query) {
     const rl = readline.createInterface({
@@ -17,10 +17,8 @@ function askQuestion(query) {
     }))
 }
 
-
-Apify.main(async () => {
-
-    let ans = await askQuestion("Are you sure you want to deploy to PRODUCTION? ");
+(async () => {
+    //ans = await askQuestion("Are you sure you want to deploy to PRODUCTION? ");
 
     var config = {
         user: 'sa',
@@ -37,30 +35,44 @@ Apify.main(async () => {
         if (err) console.log(err);
     });
 
-    log.info('Starting actor.');
+    log.info('Starting crawler.');
     const baseDomain = 'https://www.discogs.com';
-    const requestQueue = await Apify.openRequestQueue();
     const sources = [
-        'https://www.discogs.com/search/?country_exact=Serbia'
+        'https://www.discogs.com/search/?country_exact=Dominica'
     ];
 
-    const requestList = await Apify.openRequestList('categories', sources);
-    const URLrouter = router.createRouter({ requestQueue, baseDomain });
+    const URLrouter = router.createRouter({ RequestQueue, baseDomain });
     let failedRequests = [];
     let timeoutRequests = [];
 
-    log.debug('Setting up crawler.');
-
     const handlePageFunction = async (context) => {
-        const { request } = context;
-        log.info(`Processing ${request.url}`);
-        log.debug('Debug message', { debugData: 'hello' }); // doesn't print anything
+        log.info(`Processing ${context.url}`);
 
         await URLrouter(context, connectionPool);
-        await requestQueue.getInfo().then((queueInfo) => {
-            log.info(`Queue status: {total: ${queueInfo.totalRequestCount}, handled: ${queueInfo.handledRequestCount}, pending: ${queueInfo.pendingRequestCount}`);
-        });
+        const queueStats = RequestQueue.stats();
+        log.info(`Queue status: ${JSON.stringify(queueStats)}`);
     }
+
+    RequestQueue.initialize(handlePageFunction, sources);
+
+
+    const startTime = new Date();
+    log.info('<<<<<<<<<<>>>>>>>>>>');
+    log.info('Starting the crawl.');
+    log.info(startTime);
+    await RequestQueue.run();
+    log.info('<<<<<<<<<<>>>>>>>>>>');
+
+    await RequestQueue.finished();
+    const endTime = new Date();
+    log.info('<<<<<<<<<<>>>>>>>>>>');
+    log.info('Actor finished.');
+    log.info(endTime);
+    log.info(`Total duration: ${(endTime - startTime) / 1000}s`);
+    log.info(`Total time spent on timeouts was: ${router.getTotalTimeoutTime()}s`)
+    log.info('<<<<<<<<<<>>>>>>>>>>');
+
+
 
     const handleFailFunction = async (request, error) => {
         log.error(`URL: ${request.url} Failed with error: ${error}`);
@@ -72,55 +84,9 @@ Apify.main(async () => {
         log.error(`Request failed: ${request.url}, with error: ${error}`);
     }
 
-    const crawler = new Apify.CheerioCrawler({
-        requestList,
-        requestQueue,
-        handleFailedRequestFunction: handleFailFunction,
-        handlePageFunction: handlePageFunction,
-        maxRequestRetries: 5,
-        proxyUrls: ["http://localhost:8888"]
+    RequestQueue.destroy((error) => {
+        log.info(error);
     });
+    connectionPoolPromise.close();
 
-    const startTime = new Date();
-    log.info('<<<<<<<<<<>>>>>>>>>>');
-    log.info('Starting the crawl.');
-    log.info(startTime);
-    log.info('<<<<<<<<<<>>>>>>>>>>');
-
-    await crawler.run();
-
-    const endTime = new Date();
-    log.info('<<<<<<<<<<>>>>>>>>>>');
-    log.info('Actor finished.');
-    log.info(endTime);
-    log.info(`Total duration: ${(endTime - startTime) / 1000}s`);
-    log.info(`Total time spent on timeouts was: ${router.getTotalTimeoutTime()}s`)
-    log.info('<<<<<<<<<<>>>>>>>>>>');
-
-
-
-    if (failedRequests.length > 0) {
-        log.error(`Failed requests: ${failedRequests.length}`);
-        ans = await askQuestion("Do you wish to list all failed requests? y/n \n");
-        if (ans === "Y" || ans === "y") {
-            for (i = 0; i < failedRequests.length; i++) {
-                log.info(failedRequests[i].request.request.url);
-                log.info(failedRequests[i].error);
-            }
-        }
-    }
-
-
-    if (timeoutRequests.length > 0) {
-        log.error(`Timeout requests: ${timeoutRequests.length}`);
-        ans = await askQuestion("Do you wish to list all failed requests? y/n \n");
-        if (ans === "Y" || ans === "y") {
-            for (i = 0; i < timeoutRequests.length; i++) {
-                log.info(timeoutRequests[i].request.request.url);
-            }
-        }
-
-        // TODO retry
-    }
-
-});
+})();

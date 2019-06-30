@@ -1,8 +1,8 @@
-const Apify = require('apify');
-const sql = require("mssql");
-const { utils: { log } } = Apify;
 
-const crawlMaster = async ({ request, $ }, { requestQueue, baseDomain }, connectionPool) => {
+const sql = require("mssql");
+const log = require("./../log");
+
+const crawlMaster = async ({ url, $ }, { requestQueue, baseDomain }, connectionPool) => {
     const title = $('title');
     log.info("=================");
     log.info(`MASTER - ${title.text()} []`);
@@ -11,10 +11,10 @@ const crawlMaster = async ({ request, $ }, { requestQueue, baseDomain }, connect
     let masterInfo = {};
 
     let jsonLD = $('script[type="application/ld+json"]');
-    let jsonLDParsed = JSON.parse(jsonLD.html());
+    let jsonLDParsed = JSON.parse(jsonLD[0].children[0].nodeValue)
 
     let dsDataScript = $('script[id="dsdata"]');
-    let dsData = JSON.parse(dsDataScript.text().trim().slice(42, -15));
+    let dsData = JSON.parse(dsDataScript[0].children[0].nodeValue.trim().slice(42, -15));
 
 
     let trackTitles = $('td.tracklist_track_title > a');
@@ -29,7 +29,7 @@ const crawlMaster = async ({ request, $ }, { requestQueue, baseDomain }, connect
 
             const labelUrl = labelWrapper[i].attribs.href;
             const labelId = labelUrl.match(/.*\/label\/([0-9]+).*/i)[1];
-            requestQueue.addRequest({ url: baseDomain + "/label/" + labelId });
+            await requestQueue.add({ url: baseDomain + "/label/" + labelId });
             log.info(`Enqueued Label (${labelId}) - ${labelWrapper[i].attribs.href} from Release.`);
         }
     }
@@ -37,7 +37,7 @@ const crawlMaster = async ({ request, $ }, { requestQueue, baseDomain }, connect
     let enqueueTracks = true;
     let have = $("li>a.coll_num");
     let want = $("li>a.want_num");
-    let releaseMatch = request.url.match(/.*\/master\/([0-9]+)$/i);
+    let releaseMatch = url.match(/.*\/master\/([0-9]+)$/i);
 
     masterInfo.name = jsonLDParsed.name;
     masterInfo.description = jsonLDParsed.description;
@@ -77,7 +77,7 @@ const crawlMaster = async ({ request, $ }, { requestQueue, baseDomain }, connect
             const trackId = trackTitles[i].attribs.href.match(/\/track\/(.+)/i)[1];
             masterInfo.tracks[i] = trackId;
             if (enqueueTracks) {
-                //requestQueue.addRequest({ url: baseDomain + "/track/" + trackId });
+                //await  requestQueue.add({ url: baseDomain + "/track/" + trackId });
                 //enqueuedTracks++;
             }
         }
@@ -88,7 +88,7 @@ const crawlMaster = async ({ request, $ }, { requestQueue, baseDomain }, connect
     for (i = 0; i < searchResults.length; i++) {
         let releaseMatch = searchResults[i].attribs.href.match(/.*\/release\/([0-9]+)$/i);
         let resultId = releaseMatch[1];
-        //requestQueue.addRequest({ url: baseDomain + `/rls/release/${resultId}` });
+        //await requestQueue.add({ url: baseDomain + `/rls/release/${resultId}` });
     }
     //log.info(`Enqueued: ${searchResults.length} Releases from Master`);
     //log.info(`Master: ${JSON.stringify(masterInfo)}`);

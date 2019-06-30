@@ -13,21 +13,8 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch via apify",
-            "runtimeExecutable": "apify",
-            "cwd": "${workspaceFolder}\\crawler",
-            "runtimeArgs": [
-                "run",
-                "-p"
-            ],
-            "console": "integratedTerminal",
-        },
-
-        {
-            "type": "node",
-            "request": "launch",
             "name": "Launch Program",
-            "program": "${workspaceFolder}\\crawler\\main.js",
+            "program": "${workspaceFolder}/main.js",
         },
         {
             "type": "node",

@@ -1,5 +1,5 @@
-const Apify = require('apify');
-const { utils: { log } } = Apify;
+
+const log = require("./../log");
 
 const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }, connectionPool) => {
     const title = $('title').text();
@@ -8,7 +8,7 @@ const crawlArtist = async ({ request, $ }, { requestQueue, baseDomain }, connect
 
 
     let jsonLD = $('script[type="application/ld+json"]');
-    let jsonLDParsed = JSON.parse(jsonLD.html());
+    let jsonLDParsed = JSON.parse(jsonLD[0].children[0].nodeValue)
 
     artistInfo.name = jsonLDParsed.member[0].name;
     artistInfo.type = jsonLDParsed.member[0]["@type"];

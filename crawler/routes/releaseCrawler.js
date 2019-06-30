@@ -1,21 +1,23 @@
-const Apify = require('apify');
-const sql = require("mssql");
-const { utils: { log } } = Apify;
 
-const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }, connectionPool) => {
+const sql = require("mssql");
+const log = require("./../log");
+
+const crawlRelease = async ({ url, $ }, { RequestQueue, baseDomain }, connectionPool) => {
     const title = $('title');
     log.info("=================");
     log.info(`RELEASE - ${title.text()} []`);
     log.info("--------------");
 
-
+    if(!RequestQueue) {
+        console.log("err");
+    }
     let releaseInfo = {};
 
     let jsonLD = $('script[type="application/ld+json"]');
-    let jsonLDParsed = JSON.parse(jsonLD.html());
+    let jsonLDParsed = JSON.parse(jsonLD[0].children[0].nodeValue)
 
     let dsDataScript = $('script[id="dsdata"]');
-    let dsData = JSON.parse(dsDataScript.text().trim().slice(42, -15));
+    let dsData = JSON.parse(dsDataScript[0].children[0].nodeValue.trim().slice(42, -15));
 
     let trackTitles = $('td.tracklist_track_title > a');
     let trackDurations = $('td.tracklist_track_duration > span');
@@ -30,18 +32,18 @@ const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }, connec
 
             const labelUrl = labelWrapper[i].attribs.href;
             const labelId = labelUrl.match(/.*\/label\/([0-9]+).*/i)[1];
-            //requestQueue.addRequest({ url: baseDomain + "/label/" + labelId });
+            //await RequestQueue.add({ url: baseDomain + "/label/" + labelId });
             log.info(`Enqueued Label (${labelId}) - ${labelWrapper[i].attribs.href} from Release.`);
         }
     }
 
-    releaseInfo.id = parseInt(request.url.match(/.*\/release\/([0-9]+)/i)[1], 10);
+    releaseInfo.id = parseInt(url.match(/.*\/release\/([0-9]+)/i)[1], 10);
     let enqueueTracks = true;
     if (masterWrapper.length > 0) {
         let masterUrl = masterWrapper[0].attribs.href;
         let masterId = masterUrl.match(/.*\/master\/([0-9]+)/i)[1];
         releaseInfo.masterId = masterId;
-        requestQueue.addRequest({ url: baseDomain + "/rls/master/" + masterId });
+        await RequestQueue.add({ url: baseDomain + "/rls/master/" + masterId });
         log.info(`Enqueued Master (${masterId}) - ${masterUrl} from Release.`);
     } else {
         enqueueTracks = true;
@@ -60,7 +62,7 @@ const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }, connec
     releaseInfo.format = jsonLDParsed.musicReleaseFormat;
     releaseInfo.numTracks = jsonLDParsed.numTracks;
     releaseInfo.genres = dsData.pageObject.genres;
-    releaseInfo.styles = dsData.pageObject.styles;
+    releaseInfo.styles = dsData.pageObject.styles; 
     releaseInfo.artists = jsonLDParsed.releaseOf.byArtist;
     releaseInfo.country = jsonLDParsed.releasedEvent.location.name;
 
@@ -78,7 +80,7 @@ const crawlRelease = async ({ request, $ }, { requestQueue, baseDomain }, connec
             const trackId = trackTitles[i].attribs.href.match(/\/track\/(.+)/i)[1];
             releaseInfo.tracks[i] = trackId;
             if (enqueueTracks) {
-                //requestQueue.addRequest({ url: baseDomain + "/track/" + trackId });
+                //await RequestQueue.add({ url: baseDomain + "/track/" + trackId });
             }
         }
     }
