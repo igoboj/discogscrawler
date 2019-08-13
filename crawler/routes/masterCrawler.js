@@ -95,52 +95,50 @@ const crawlMaster = async ({ url, $ }, { requestQueue, baseDomain }, connectionP
     masterInfo.releaseDuration = releaseDuration;
 
     ////////////////////////////////
-    connectionPool.then((pool) => {
-        const sqlRequest = new sql.Request(pool);
-        sqlRequest
-            .input('id', sql.Int, masterInfo.id)
-            .input('have', sql.Int, masterInfo.have)
-            .input('want', sql.Int, masterInfo.want)
-            .input('published', sql.Int, masterInfo.datePublished)
-            .input('name', sql.NVarChar, masterInfo.name)
-            .input('trackCount', sql.Int, masterInfo.numTracks)
-            .query('INSERT INTO Master VALUES(@id,@have,@want,@published,@name,@trackCount)')
-            .then(result => {
-                log.info(`Inserted row in Master: ${result.rowsAffected}`);
-            })
-            .catch(async (err) => {
-                log.error(`Error while inserting row in Master: ${err.message}`);
-                if (err.message.includes("Violation of PRIMARY KEY constraint")) {
-                    // Try to update existing empty master
-                    const sqlRequest = new sql.Request(pool);
-                    await sqlRequest
-                        .input('masterId', sql.Int, masterInfo.id)
-                        .query('SELECT * FROM Master WHERE IdMaster=@masterId')
-                        .then(async result => {
-                            if (result.recordset.length != 0 && result.recordset[0].Name == "") {
-                                const masterRequest = new sql.Request(pool);
-                                await masterRequest
-                                    .input('id', sql.Int, masterInfo.id)
-                                    .input('have', sql.Int, masterInfo.have)
-                                    .input('want', sql.Int, masterInfo.want)
-                                    .input('published', sql.Int, masterInfo.datePublished)
-                                    .input('name', sql.NVarChar, masterInfo.name)
-                                    .input('trackCount', sql.Int, masterInfo.numTracks)
-                                    .query('UPDATE Master SET [Have]=@have,[Want]=@want,[Published]=@published,[Name]=@name,[TrackCount]=@trackCount WHERE IdMaster=@id')
-                                    .then(result => {
-                                        log.info(`Updated empty Master: ${result.rowsAffected}`);
-                                    })
-                                    .catch(err => {
-                                        log.error(`Error while updating empty in Master: ${err.message}`);
-                                    });
-                            }
-                        })
-                        .catch(err => {
-                            log.error(`Error while inserting row in Master: ${err.message}`);
-                        });
-                }
-            });
-    });
+    const sqlRequest = connectionPool.request();
+    sqlRequest
+        .input('id', sql.Int, masterInfo.id)
+        .input('have', sql.Int, masterInfo.have)
+        .input('want', sql.Int, masterInfo.want)
+        .input('published', sql.Int, masterInfo.datePublished)
+        .input('name', sql.NVarChar, masterInfo.name)
+        .input('trackCount', sql.Int, masterInfo.numTracks)
+        .query('INSERT INTO Master VALUES(@id,@have,@want,@published,@name,@trackCount)')
+        .then(result => {
+            log.info(`Inserted row in Master: ${result.rowsAffected}`);
+        })
+        .catch(async (err) => {
+            log.error(`Error while inserting row in Master: ${err.message}`);
+            if (err.message.includes("Violation of PRIMARY KEY constraint")) {
+                // Try to update existing empty master
+                const sqlRequest = connectionPool.request();
+                await sqlRequest
+                    .input('masterId', sql.Int, masterInfo.id)
+                    .query('SELECT * FROM Master WHERE IdMaster=@masterId')
+                    .then(async result => {
+                        if (result.recordset.length != 0 && result.recordset[0].Name == "") {
+                            const masterRequest = connectionPool.request();
+                            await masterRequest
+                                .input('id', sql.Int, masterInfo.id)
+                                .input('have', sql.Int, masterInfo.have)
+                                .input('want', sql.Int, masterInfo.want)
+                                .input('published', sql.Int, masterInfo.datePublished)
+                                .input('name', sql.NVarChar, masterInfo.name)
+                                .input('trackCount', sql.Int, masterInfo.numTracks)
+                                .query('UPDATE Master SET [Have]=@have,[Want]=@want,[Published]=@published,[Name]=@name,[TrackCount]=@trackCount WHERE IdMaster=@id')
+                                .then(result => {
+                                    log.info(`Updated empty Master: ${result.rowsAffected}`);
+                                })
+                                .catch(err => {
+                                    log.error(`Error while updating empty in Master: ${err.message}`);
+                                });
+                        }
+                    })
+                    .catch(err => {
+                        log.error(`Error while inserting row in Master: ${err.message}`);
+                    });
+            }
+        });
 
     ///////////////////////////////
 

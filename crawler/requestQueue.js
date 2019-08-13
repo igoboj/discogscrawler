@@ -1,24 +1,37 @@
-let Queue = require('better-queue');
+let Queue = require('queue');
 let HashMap = require('hashmap');
 const tr = require("tor-request");
-const cheerio = require('cheerio')
+const cheerio = require('cheerio');
+const deferred = require('deferred');
+const fs = require('fs');
 
-var debug = typeof v8debug === 'object';
+tr.TorControlPort.password = "SECRETPASSWORD";
 
 let handlePageFunction;
 let queue;
 let processedUrls;
-let started = false;
+let finishedDef;
 let queueStats = {
     enqueued: 0,
     started: 0,
     finished: 0,
     failed: 0,
+    timedout: 0,
+    retriedOut: 0,
 }
-
+let maxRetries = 5;
+let concurrency = 10;
+let timeout = 50000;
+let changingIP = false;
 
 async function processUrl(input, callback) {
-    await tr.request(input, function (err, res, body) {
+    let urlEntry = processedUrls.get(input)
+    urlEntry.status = "processing";
+    processedUrls.set(input, urlEntry);
+
+    tr.request(input, async function (err, res, body) {
+        urlEntry.status = "fetched";
+        processedUrls.set(input, urlEntry);
         if (!err && res.statusCode == 200) {
             const $ = cheerio.load(body)
             let context = {
@@ -27,50 +40,111 @@ async function processUrl(input, callback) {
             }
             try {
                 handlePageFunction(context);
+
                 callback(null, true);
+
+                urlEntry.status = "finished";
+                processedUrls.set(input, urlEntry);
             } catch (error) {
                 callback(error, false);
+
+                urlEntry.status = "failed";
+                processedUrls.set(input, urlEntry);
             }
         } else {
-            callback(err, false);
+            callback(null, true);
+
+            console.log("TOR - Wants to change IP");
+            if (!changingIP) {
+                console.log("TOR - Changing IP");
+                changingIP = true;
+                await tr.newTorSession((error) => {
+                    changingIP = false;
+                    if (!error) {
+                        tr.request('https://api.ipify.org', function (err, res, body) {
+                            if (!err && res.statusCode == 200) {
+                                console.log("TOR - Changed IP to: " + body);
+                            }
+                        });
+                    } else {
+                        console.log("TOR - Failed to change IP");
+                    }
+                });
+            }
+            if (!enqueue({ url: input })) {
+                queueStats.retriedOut++;
+            }
         }
     });
 }
 
-function init(handleFunction, sources, options) {
-    handlePageFunction = handleFunction;
-    if (!options) {
-        const defaultOptions = {
-            maxRetries: 5,
-            maxTimeout: 3000,
-            concurrent: 3,
-            precondition: function (cb) {
-                if (started) {
-                    cb(null, true);
-                } else {
-                    cb(null, true);
-                }
-            },
-            preconditionRetryTimeout: 100
-        }
-        queue = new Queue(processUrl, defaultOptions)
-            .on("task_queued", function (task_id, var1) {
-                //queueStats.enqueued++;
-            })
-            .on("task_started", function (task_id, var1) {
-                queueStats.started++;
-            })
-            .on("task_finish", function (task_id, var1) {
-                queueStats.finished++;
-            })
-            .on("task_failed", function (task_id, var1) {
-                queueStats.failed++;
-            });
-    } else {
-        queue = new Queue(processUrl, options);
+function enqueue(options) {
+    if (queueStats.enqueued % 500 == 0) {
+        dump();
     }
 
+    let urlEntry = processedUrls.get(options.url)
+    if (options.url) {
+        if (!urlEntry) {
 
+            processedUrls.set(options.url, {
+                retries: 0,
+                status: "enqueued",
+            });
+
+            queue.push(function (cb) {
+                processUrl(options.url, cb);
+            });
+            queueStats.enqueued++;
+            return true;
+
+        } else if (urlEntry.retries < 5) {
+
+            queue.push(function (cb) {
+                processUrl(options.url, cb);
+            });
+
+            urlEntry.retries++;
+            urlEntry.status = "requeued";
+            processedUrls.set(options.url, urlEntry);
+            queueStats.enqueued++;
+
+            return true;
+        } else {
+            urlEntry.status = "retryLimitReached";
+            processedUrls.set(options.url, urlEntry);
+            return false;
+        }
+    }
+    return false;
+}
+
+function init(handleFunction, sources, options) {
+    handlePageFunction = handleFunction;
+
+    maxRetries = options && options.maxRetries && options.maxRetries;
+    concurrency = options && options.concurrency && options.concurrency
+    finishedDef = deferred();
+
+    queue = Queue()
+        .on("start", function (next, job) {
+            queueStats.started++;
+        })
+        .on("success", function (next, job) {
+            queueStats.finished++;
+        })
+        .on("error", function (next, job) {
+            queueStats.failed++;
+        })
+        .on("timeout", function (next, job) {
+            queueStats.timedout++;
+        })
+        .on("end", function (err) {
+            finishedDef.resolve("All requests finished.");
+        });
+
+    queue.timeout = timeout;
+    queue.concurrency = concurrency;
     processedUrls = new HashMap();
 
     if (sources) {
@@ -80,41 +154,25 @@ function init(handleFunction, sources, options) {
     }
 }
 
-function enqueue(options) {
-    if (options.url && !processedUrls.get(options.url)) {
-        processedUrls.set(options.url, true);
-        queue.push(options.url).on("failed", (err) => {
-            console.log(err);
-        });
-        queueStats.enqueued++;
-    }
-}
-
 function stats() {
     return queueStats;
 }
 
 async function run() {
-    started = true;
-    return new Promise(resolve => {
-        setTimeout(resolve, 1000)
-    })
+    queue.start();
 }
 
 function isFinished() {
-
-    return new Promise(function (resolve, reject) {
-        (function checkIfFinished() {
-            if ((queueStats.enqueued - queueStats.finished) == 0) return resolve();
-            setTimeout(checkIfFinished, 150);
-        })();
-    });
+    return finishedDef.promise;
 }
 
-function destroy() {
-    if (queue) {
-        queue.destroy();
-    }
+function dump() {
+    let dumpContent = JSON.stringify(processedUrls);
+    fs.writeFile("D:\\IGOR\\ETF backup\\PSZ\\discogscrawler\\crawler\\dump.txt", dumpContent, function (err) {
+        if (err) {
+            return console.log(err);
+        }
+    });
 }
 
 const api = {
@@ -123,7 +181,7 @@ const api = {
     stats: stats,
     run: run,
     finished: isFinished,
-    destroy: destroy,
+    dump: dump
 }
 
 module.exports = api;

@@ -24,21 +24,23 @@ function askQuestion(query) {
         user: 'sa',
         password: 'Password1!',
         server: 'localhost',
-        database: 'discogs'
+        database: 'discogs',
+        pool: {
+            max: 100,
+            min: 1
+        }
     };
 
     const connectionPoolPromise = new sql.ConnectionPool(config);
-    const connectionPool = connectionPoolPromise.connect().then((pool) => {
-        log.info('Established SQLExpress connection pool.');
-        return pool;
-    }).catch((err) => {
+    connectionPoolPromise.on('error', (err) => {
         if (err) console.log(err);
     });
+    await connectionPoolPromise.connect();
 
     log.info('Starting crawler.');
     const baseDomain = 'https://www.discogs.com';
     const sources = [
-        'https://www.discogs.com/search/?country_exact=Dominica'
+        'https://www.discogs.com/search/?country_exact=Yugoslavia'
     ];
 
     const URLrouter = router.createRouter({ RequestQueue, baseDomain });
@@ -48,12 +50,12 @@ function askQuestion(query) {
     const handlePageFunction = async (context) => {
         log.info(`Processing ${context.url}`);
 
-        await URLrouter(context, connectionPool);
+        await URLrouter(context, connectionPoolPromise);
         const queueStats = RequestQueue.stats();
         log.info(`Queue status: ${JSON.stringify(queueStats)}`);
     }
 
-    RequestQueue.initialize(handlePageFunction, sources);
+    RequestQueue.initialize(handlePageFunction, sources, { maxRetries: 10, concurrency: 10 });
 
 
     const startTime = new Date();
@@ -63,14 +65,17 @@ function askQuestion(query) {
     await RequestQueue.run();
     log.info('<<<<<<<<<<>>>>>>>>>>');
 
-    await RequestQueue.finished();
-    const endTime = new Date();
-    log.info('<<<<<<<<<<>>>>>>>>>>');
-    log.info('Actor finished.');
-    log.info(endTime);
-    log.info(`Total duration: ${(endTime - startTime) / 1000}s`);
-    log.info(`Total time spent on timeouts was: ${router.getTotalTimeoutTime()}s`)
-    log.info('<<<<<<<<<<>>>>>>>>>>');
+    await RequestQueue.finished().then((result) => {
+        const endTime = new Date();
+        log.info('<<<<<<<<<<>>>>>>>>>>');
+        log.info('Actor finished.');
+        log.info(endTime);
+        log.info(`Total duration: ${(endTime - startTime) / 1000}s`);
+        log.info(`Total time spent on timeouts was: ${router.getTotalTimeoutTime()}s`)
+        log.info('<<<<<<<<<<>>>>>>>>>>');
+        connectionPoolPromise.close();
+        RequestQueue.dump();
+    });
 
 
 
@@ -83,10 +88,4 @@ function askQuestion(query) {
         }
         log.error(`Request failed: ${request.url}, with error: ${error}`);
     }
-
-    RequestQueue.destroy((error) => {
-        log.info(error);
-    });
-    connectionPoolPromise.close();
-
 })();

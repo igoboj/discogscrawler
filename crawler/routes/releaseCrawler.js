@@ -8,7 +8,7 @@ const crawlRelease = async ({ url, $ }, { RequestQueue, baseDomain }, connection
     log.info(`RELEASE - ${title.text()} []`);
     log.info("--------------");
 
-    if(!RequestQueue) {
+    if (!RequestQueue) {
         console.log("err");
     }
     let releaseInfo = {};
@@ -62,7 +62,7 @@ const crawlRelease = async ({ url, $ }, { RequestQueue, baseDomain }, connection
     releaseInfo.format = jsonLDParsed.musicReleaseFormat;
     releaseInfo.numTracks = jsonLDParsed.numTracks;
     releaseInfo.genres = dsData.pageObject.genres;
-    releaseInfo.styles = dsData.pageObject.styles; 
+    releaseInfo.styles = dsData.pageObject.styles;
     releaseInfo.artists = jsonLDParsed.releaseOf.byArtist;
     releaseInfo.country = jsonLDParsed.releasedEvent.location.name;
 
@@ -100,60 +100,58 @@ const crawlRelease = async ({ url, $ }, { RequestQueue, baseDomain }, connection
 
 async function insertData(connectionPool, releaseInfo) {
 
-    connectionPool.then(async (pool) =>  {
-        if (releaseInfo.masterId) {
-            const sqlRequest = new sql.Request(pool);
-            await sqlRequest
-                .input('masterId', sql.Int, releaseInfo.masterId)
-                .query('SELECT * FROM Master WHERE IdMaster=@masterId')
-                .then(async result => {
-                    if (result.recordset.length == 0) {
-                        const masterRequest = new sql.Request(pool);
-                        await masterRequest
-                            .input('id', sql.Int, releaseInfo.masterId)
-                            .input('have', sql.Int, 0)
-                            .input('want', sql.Int, 0)
-                            .input('published', sql.Int, 1800)
-                            .input('name', sql.NVarChar, "")
-                            .input('trackCount', sql.Int, 0)
-                            .query('INSERT INTO Master VALUES(@id,@have,@want,@published,@name,@trackCount)')
-                            .then(result => {
-                                log.info(`Inserted empty Master: ${result.rowsAffected}`);
-                            })
-                            .catch(err => {
-                                log.error(`Error while inserting row in Master: ${err.message}`);
-                            });
-                    }
-                })
-                .catch(err => {
-                    log.error(`Error while inserting row in Master: ${err.message}`);
-                });
-        }
-
-        const sqlRequest = new sql.Request(pool);
+    if (releaseInfo.masterId) {
+        const sqlRequest = connectionPool.request();
         await sqlRequest
-            .input('id', sql.Int, releaseInfo.id)
-            .input('have', sql.Int, releaseInfo.have || 0)
-            .input('want', sql.Int, releaseInfo.want || 0)
-            .input('published', sql.Int, releaseInfo.datePublished)
-            .input('name', sql.NVarChar, releaseInfo.name)
-            .input('trackCount', sql.Int, releaseInfo.numTracks)
-            .input('description', sql.NVarChar, releaseInfo.description)
-            .input('ratingCount', sql.Int, releaseInfo.rating ? releaseInfo.rating.ratingCount : 0)
-            .input('ratingValue', sql.Float, releaseInfo.rating ? releaseInfo.rating.ratingValue : 0)
-            .input('format', sql.NVarChar, releaseInfo.format)
-            .input('country', sql.NVarChar, releaseInfo.country)
-            .input('duration', sql.Int, releaseInfo.releaseDuration)
             .input('masterId', sql.Int, releaseInfo.masterId)
-            .query('INSERT INTO Release ([IdRelease],[Have],[Want],[Published],[Name],[TrackCount],[Description],[RatingCount],[RatingValue],[Format],[Country],[Duration],[IdMaster]) ' +
-                'VALUES(@id,@have,@want,@published,@name,@trackCount,@description,@ratingCount,@ratingValue,@format,@country,@duration,@masterId)')
-            .then(result => {
-                log.info(`Inserted row in Release: ${result.rowsAffected}`);
+            .query('SELECT * FROM Master WHERE IdMaster=@masterId')
+            .then(async result => {
+                if (result.recordset.length == 0) {
+                    const masterRequest = connectionPool.request();
+                    await masterRequest
+                        .input('id', sql.Int, releaseInfo.masterId)
+                        .input('have', sql.Int, 0)
+                        .input('want', sql.Int, 0)
+                        .input('published', sql.Int, 1800)
+                        .input('name', sql.NVarChar, "")
+                        .input('trackCount', sql.Int, 0)
+                        .query('INSERT INTO Master VALUES(@id,@have,@want,@published,@name,@trackCount)')
+                        .then(result => {
+                            log.info(`Inserted empty Master: ${result.rowsAffected}`);
+                        })
+                        .catch(err => {
+                            log.error(`Error while inserting row in Master: ${err.message}`);
+                        });
+                }
             })
             .catch(err => {
-                log.error(`Error while inserting row in Release: ${err.message}`);
+                log.error(`Error while inserting row in Master: ${err.message}`);
             });
-    });
+    }
+
+    const sqlRequest = connectionPool.request();
+    await sqlRequest
+        .input('id', sql.Int, releaseInfo.id)
+        .input('have', sql.Int, releaseInfo.have || 0)
+        .input('want', sql.Int, releaseInfo.want || 0)
+        .input('published', sql.Int, releaseInfo.datePublished)
+        .input('name', sql.NVarChar, releaseInfo.name)
+        .input('trackCount', sql.Int, releaseInfo.numTracks)
+        .input('description', sql.NVarChar, releaseInfo.description)
+        .input('ratingCount', sql.Int, releaseInfo.rating ? releaseInfo.rating.ratingCount : 0)
+        .input('ratingValue', sql.Float, releaseInfo.rating ? releaseInfo.rating.ratingValue : 0)
+        .input('format', sql.NVarChar, releaseInfo.format)
+        .input('country', sql.NVarChar, releaseInfo.country)
+        .input('duration', sql.Int, releaseInfo.releaseDuration)
+        .input('masterId', sql.Int, releaseInfo.masterId)
+        .query('INSERT INTO Release ([IdRelease],[Have],[Want],[Published],[Name],[TrackCount],[Description],[RatingCount],[RatingValue],[Format],[Country],[Duration],[IdMaster]) ' +
+            'VALUES(@id,@have,@want,@published,@name,@trackCount,@description,@ratingCount,@ratingValue,@format,@country,@duration,@masterId)')
+        .then(result => {
+            log.info(`Inserted row in Release: ${result.rowsAffected}`);
+        })
+        .catch(err => {
+            log.error(`Error while inserting row in Release: ${err.message}`);
+        });
 }
 
 exports.crawlRelease = crawlRelease;

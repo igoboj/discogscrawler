@@ -6,11 +6,13 @@
 		"apify": "^0.14.15",
 		"better-queue": "^3.8.10",
 		"cheerio": "^1.0.0-rc.3",
+		"deferred": "^0.7.11",
 		"hashmap": "^2.3.0",
 		"ipify": "^4.0.0",
 		"jquery": "^3.4.1",
 		"mssql": "^5.1.0",
 		"puppeteer": "^1.17.0",
+		"queue": "^6.0.1",
 		"scrapoxy": "^3.1.1",
 		"tor-request": "^3.1.0"
 	},
