@@ -23,6 +23,8 @@ let maxRetries = 5;
 let concurrency = 10;
 let timeout = 50000;
 let changingIP = false;
+let maxRequests = 60;
+let requestCount = 0;
 
 async function processUrl(input, callback) {
     let urlEntry = processedUrls.get(input)
@@ -54,32 +56,43 @@ async function processUrl(input, callback) {
         } else {
             callback(null, true);
 
-            console.log("TOR - Wants to change IP");
-            if (!changingIP) {
-                console.log("TOR - Changing IP");
-                changingIP = true;
-                await tr.newTorSession((error) => {
-                    changingIP = false;
-                    if (!error) {
-                        tr.request('https://api.ipify.org', function (err, res, body) {
-                            if (!err && res.statusCode == 200) {
-                                console.log("TOR - Changed IP to: " + body);
-                            }
-                        });
-                    } else {
-                        console.log("TOR - Failed to change IP");
-                    }
-                });
-            }
+            changeIP();
+
             if (!enqueue({ url: input })) {
                 queueStats.retriedOut++;
             }
         }
     });
+
+    requestCount++;
+    if (requestCount > maxRequests) {
+        requestCount = 0;
+        changeIP();
+    }
+}
+
+async function changeIP() {
+    console.log("TOR - Wants to change IP");
+    if (!changingIP) {
+        console.log("TOR - Changing IP");
+        changingIP = true;
+        await tr.newTorSession((error) => {
+            changingIP = false;
+            if (!error) {
+                tr.request('https://api.ipify.org', function (err, res, body) {
+                    if (!err && res.statusCode == 200) {
+                        console.log("TOR - Changed IP to: " + body);
+                    }
+                });
+            } else {
+                console.log("TOR - Failed to change IP");
+            }
+        });
+    }
 }
 
 function enqueue(options) {
-    if (queueStats.enqueued % 500 == 0) {
+    if (queueStats.enqueued % 1000 == 0) {
         dump();
     }
 
@@ -98,7 +111,7 @@ function enqueue(options) {
             queueStats.enqueued++;
             return true;
 
-        } else if (urlEntry.retries < 5) {
+        } else if (urlEntry.retries < 5 && urlEntry.status != "finished") {
 
             queue.push(function (cb) {
                 processUrl(options.url, cb);
@@ -167,8 +180,12 @@ function isFinished() {
 }
 
 function dump() {
-    let dumpContent = JSON.stringify(processedUrls);
-    fs.writeFile("D:\\IGOR\\ETF backup\\PSZ\\discogscrawler\\crawler\\dump.txt", dumpContent, function (err) {
+    let hashMapDump = "";
+    processedUrls.forEach((value, key) => {
+        hashMapDump += value.status + "[" + key + "]\n";
+    });
+    //let dumpContent = JSON.stringify(processedUrls);
+    fs.writeFile("D:\\IGOR\\ETF backup\\PSZ\\discogscrawler\\crawler\\dump.txt", hashMapDump, function (err) {
         if (err) {
             return console.log(err);
         }
