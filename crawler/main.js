@@ -42,7 +42,7 @@ function askQuestion(query) {
     log.info('Starting crawler.');
     const baseDomain = 'https://www.discogs.com';
     const sources = [
-        'https://www.discogs.com/search/?country_exact=Serbia'
+        'https://www.discogs.com/search/?country_exact=Yugoslavia'
     ];
 
     const URLrouter = router.createRouter({ RequestQueue, baseDomain });
