@@ -80,7 +80,7 @@ async function insertRelease(connectionPool, releaseInfo) {
 
 async function insertOrUpdateMaster(connectionPool, masterInfo) {
     let sqlRequest = connectionPool.request();
-    sqlRequest
+    await sqlRequest
         .input('id', sql.Int, masterInfo.id)
         .input('have', sql.Int, masterInfo.have)
         .input('want', sql.Int, masterInfo.want)
@@ -92,7 +92,7 @@ async function insertOrUpdateMaster(connectionPool, masterInfo) {
             log.info(`Inserted row in Master: ${result.rowsAffected}`);
         })
         .catch(async (err) => {
-            log.error(`Error while inserting row in Master: ${err.message}`);
+            log.info(`Error while inserting row in Master: ${err.message}`);
             if (err.message.includes("Violation of PRIMARY KEY constraint") && masterInfo.name) {
                 // Try to update existing empty master
                 const sqlRequest = connectionPool.request();
@@ -156,18 +156,20 @@ async function getMaster(connectionPool, masterId) {
 
 
 async function insertGenresStyles(connectionPool, tableName, isMaster, name, id) {
-    const sqlRequest = connectionPool.request();
-    let values = isMaster ? "@name, @id" : "@id, @name";
-    await sqlRequest
-        .input('name', sql.NVarChar, name)
-        .input('id', sql.Int, id)
-        .query(`INSERT INTO ${tableName} VALUES(${values})`)
-        .then(result => {
-            log.info(`Inserted row in ${tableName}: ${id}:${name}`);
-        })
-        .catch(async (err) => {
-            log.error(`Error while inserting row in ${tableName}: ${err.message}`);
-        });
+    if (name && id) {
+        const sqlRequest = connectionPool.request();
+        let values = isMaster ? "@name, @id" : "@id, @name";
+        await sqlRequest
+            .input('name', sql.NVarChar, name)
+            .input('id', sql.Int, id)
+            .query(`INSERT INTO ${tableName} VALUES(${values})`)
+            .then(result => {
+                log.info(`Inserted row in ${tableName}: ${id}:${name}`);
+            })
+            .catch(async (err) => {
+                log.error(`Error while inserting row in ${tableName}: ${err.message}`);
+            });
+    }
 }
 
 async function insertGenre(connectionPool, genreName) {

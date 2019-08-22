@@ -92,6 +92,7 @@ const crawlRelease = async ({ url, $ }, { RequestQueue, baseDomain }, connection
     releaseInfo.releaseDuration = releaseDuration;
     /////////////////////////////////
 
+    masterDB = await DBContext.getMaster(connectionPool, masterId);
     if (!masterDB) {
         if (releaseInfo.masterId) {
             let masterInfo = {

@@ -4,7 +4,7 @@ function info(input) {
 }
 
 function error(input) {
-    console.log("ERROR: " + input);
+    console.log('\x1b[31mError: %s\x1b[0m', input);
 }
 
 const api = {

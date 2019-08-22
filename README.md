@@ -9,3 +9,6 @@ Running the crawler:
 1. Run tor.exe with the path pointing to the torcc file - tor.exe -f ../Data/Tor/torrc
 2. Specify the root country to start the crawl from
 3. node main.js
+
+
+PowerBI Dashboard: https://app.powerbi.com/groups/me/dashboards/7e81f33c-09b0-4edc-a552-1ff860c8aeda
