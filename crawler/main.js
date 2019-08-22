@@ -4,6 +4,8 @@ const readline = require('readline');
 const sql = require("mssql");
 const log = require("./log");
 const RequestQueue = require("./requestQueue");
+const DBContext = require('./dbContext');
+
 
 function askQuestion(query) {
     const rl = readline.createInterface({
@@ -40,7 +42,7 @@ function askQuestion(query) {
     log.info('Starting crawler.');
     const baseDomain = 'https://www.discogs.com';
     const sources = [
-        'https://www.discogs.com/search/?country_exact=Yugoslavia'
+        'https://www.discogs.com/search/?country_exact=Serbia'
     ];
 
     const URLrouter = router.createRouter({ RequestQueue, baseDomain });
@@ -56,7 +58,7 @@ function askQuestion(query) {
     }
 
     RequestQueue.initialize(handlePageFunction, sources, { maxRetries: 10, concurrency: 10 });
-
+    DBContext.initialize(connectionPoolPromise);
 
     const startTime = new Date();
     log.info('<<<<<<<<<<>>>>>>>>>>');
