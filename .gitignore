@@ -4,3 +4,7 @@ crawler/dump.txt
 crawler/dataset.txt
 analysis/.vscode/.ropeproject/objectdb
 analysis/.vscode/.ropeproject/config.py
+analysis/build/
+analysis/dist/
+analysis/__pycache__/
+analysis/kmeans.spec

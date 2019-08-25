@@ -5,6 +5,7 @@ import sys, getopt
 import random
 import colorsys
 import seaborn as sns
+import math
 from mpl_toolkits.mplot3d import Axes3D
 from collections import Counter
 from sklearn.preprocessing import LabelEncoder
@@ -160,11 +161,12 @@ def main(argv):
             ax.set_zlabel(chosenFeatures[2][1])
 
             # count the occurrences of each point
-            c = Counter(zip(arr[0], arr[1]))
+            c = Counter(zip(plottable_X[0], plottable_X[1], plottable_X[2]))
             # create a list of the sizes, here multiplied by 10 for scale
             density = [
-                0.5 * c[(xx, yy, zz)] for xx, yy, zz in zip(
-                    plottable_X[0], plottable_X[1], plottable_X[2])
+                10 + ((2000) / rowCount) * c[(xx, yy, zz)]
+                for xx, yy, zz in zip(plottable_X[0], plottable_X[1],
+                                      plottable_X[2])
             ]
 
             for i in range(0, nClusters):
@@ -183,10 +185,10 @@ def main(argv):
             ax.set_ylabel(chosenFeatures[1][1])
 
             # count the occurrences of each point
-            c = Counter(zip(arr[0], arr[1]))
+            c = Counter(zip(plottable_X[0], plottable_X[1]))
             # create a list of the sizes, here multiplied by 10 for scale
             density = [
-                0.5 * c[(xx, yy)]
+                10 + (10000 / rowCount) * c[(xx, yy)]
                 for xx, yy in zip(plottable_X[0], plottable_X[1])
             ]
 
@@ -219,7 +221,7 @@ def main(argv):
                    c='red',
                    edgecolor='black',
                    label='centroids')
-
+    plt.legend()
     plt.grid()
     plt.show()
 
