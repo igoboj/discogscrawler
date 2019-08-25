@@ -14,8 +14,20 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
 
+def takespread(sequence, num):
+    length = float(len(sequence))
+    retVal = sequence
+    if length <= num:
+        return retVal
+    else:
+        retVal = [int(math.ceil(i * length / num)) for i in range(num)]
+        if retVal[-1] != sequence[-1]:
+            retVal.append(sequence[-1])
+    return retVal
+
+
 def main(argv):
-    dataSetFile = "../crawler/dataset.txt"
+    dataSetFile = ""
     nClusters = 3
     dataPointLimits = 0
 
@@ -40,6 +52,11 @@ def main(argv):
             nClusters = int(arg)
         elif opt in ("-l", "--limit"):
             dataPointLimits = int(arg)
+    if len(dataSetFile) < 1:
+        print("No input dataset specified.")
+        print(helpmsg)
+        sys.exit()
+
     print('Dataset: "', dataSetFile)
     print('Number of clusters: ', str(nClusters))
     print('Process files limit: ', str(dataPointLimits))
@@ -98,27 +115,24 @@ def main(argv):
         sys.exit(1)
 
     # encode labels
-    encoder = LabelEncoder()
+    encoders = [None] * featureCount
+    encodedLabels = [None] * featureCount
     # encodedLabels:
     # 0: [3, [0, 1, 0....]]
     # 1: [4, [0, 0, 1....]]
     # ...
-    encodedLabels = [[
-        chosenFeatures[i][0],
-        encoder.fit_transform(features[chosenFeatures[i][0]])
-    ] for i in range(0, len(chosenFeatures)) if chosenFeatures[i][2] == False]
+    for i in range(0, len(chosenFeatures)):
+        featureIndex = chosenFeatures[i][0]
+        encoders[featureIndex] = LabelEncoder()
+        encoders[featureIndex].fit(features[featureIndex])
+        encodedLabels[featureIndex] = encoders[featureIndex].fit_transform(
+            features[featureIndex])
 
     # normalize data
     arr = np.empty([len(chosenFeatures), rowCount])
 
     for i in range(len(chosenFeatures)):
-        if chosenFeatures[i][2] == True:
-            arr[i] = features[chosenFeatures[i][0]]
-        else:
-            arr[i] = [
-                encodedLabel[1] for encodedLabel in encodedLabels
-                if encodedLabel[0] == chosenFeatures[i][0]
-            ][0]
+        arr[i] = encodedLabels[chosenFeatures[i][0]]
 
     #arr = arr.reshape(-1, 1)
     plottable_X = arr
@@ -151,64 +165,109 @@ def main(argv):
     # plot
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    ax.set_title(label='Clusters:' + str(nClusters) + ' DataPoints:' +
+                 str(rowCount),
+                 pad=20.)
 
-    if nClusters > len(markers):
-        print('Cant plot so many clusters')
-    else:
-        if len(chosenFeatures) == 3:
-            ax.set_xlabel(chosenFeatures[0][1])
-            ax.set_ylabel(chosenFeatures[1][1])
-            ax.set_zlabel(chosenFeatures[2][1])
+    if len(chosenFeatures) == 3:
+        ax.set_xlabel(chosenFeatures[0][1], labelpad=20.)
+        ax.set_ylabel(chosenFeatures[1][1], labelpad=20.)
+        ax.set_zlabel(chosenFeatures[2][1], labelpad=20.)
 
-            # count the occurrences of each point
-            c = Counter(zip(plottable_X[0], plottable_X[1], plottable_X[2]))
-            # create a list of the sizes, here multiplied by 10 for scale
-            density = [
-                10 + ((2000) / rowCount) * c[(xx, yy, zz)]
-                for xx, yy, zz in zip(plottable_X[0], plottable_X[1],
-                                      plottable_X[2])
-            ]
+        ax.tick_params(direction='out', grid_color='r', grid_alpha=0.5)
 
-            for i in range(0, nClusters):
-                color = colors[i % 10]
-                marker = markers[i]
-                ax.scatter(xs=plottable_X[0, y_km == i],
-                           ys=plottable_X[1, y_km == i],
-                           zs=plottable_X[2, y_km == i],
-                           c=color,
-                           marker=marker,
-                           edgecolor='black',
-                           label='cluster ' + str(i),
-                           s=density)
-        elif len(chosenFeatures) == 2:
-            ax.set_xlabel(chosenFeatures[0][1])
-            ax.set_ylabel(chosenFeatures[1][1])
+        ax.xaxis.set_tick_params(rotation=90)
+        ax.yaxis.set_tick_params(rotation=90)
 
-            # count the occurrences of each point
-            c = Counter(zip(plottable_X[0], plottable_X[1]))
-            # create a list of the sizes, here multiplied by 10 for scale
-            density = [
-                10 + (10000 / rowCount) * c[(xx, yy)]
-                for xx, yy in zip(plottable_X[0], plottable_X[1])
-            ]
+        xTickValues = list(set(encodedLabels[chosenFeatures[0][0]]))
+        yTickValues = list(set(encodedLabels[chosenFeatures[1][0]]))
+        zTickValues = list(set(encodedLabels[chosenFeatures[2][0]]))
+        # X TICKS
+        ax.set_xticks(takespread(xTickValues, 25))
+        ax.set_xticklabels(
+            encoders[chosenFeatures[0][0]].inverse_transform(
+                takespread(xTickValues, 25)))
 
-            for i in range(0, nClusters):
-                color = colors[i % 10]
-                marker = markers[i]
-                ax.scatter(xs=plottable_X[0, y_km == i],
-                           ys=plottable_X[1, y_km == i],
-                           c=color,
-                           marker=marker,
-                           edgecolor='black',
-                           label='cluster ' + str(i),
-                           s=50)
+        # Y TICKS
+        ax.set_yticks(takespread(yTickValues, 25))
+        ax.set_yticklabels(
+            encoders[chosenFeatures[1][0]].inverse_transform(
+                takespread(yTickValues, 25)))
+
+        # Z TICKS
+        ax.set_zticks(takespread(zTickValues, 25))
+        ax.set_zticklabels(
+            encoders[chosenFeatures[2][0]].inverse_transform(
+                takespread(zTickValues, 25)))
+
+        # count the occurrences of each point
+        c = Counter(zip(plottable_X[0], plottable_X[1], plottable_X[2]))
+        # create a list of the sizes, here multiplied by 10 for scale
+        density = [
+            10 + ((2000) / rowCount) * c[(xx, yy, zz)] for xx, yy, zz in
+            zip(plottable_X[0], plottable_X[1], plottable_X[2])
+        ]
+
+        for i in range(0, nClusters):
+            color = colors[i % 10]
+            marker = markers[i % len(markers)]
+            ax.scatter(xs=plottable_X[0, y_km == i],
+                        ys=plottable_X[1, y_km == i],
+                        zs=plottable_X[2, y_km == i],
+                        c=color,
+                        marker=marker,
+                        edgecolor='black',
+                        label='cluster ' + str(i),
+                        s=density)
+
+    elif len(chosenFeatures) == 2:
+        ax.set_xlabel(chosenFeatures[0][1], labelpad=20.)
+        ax.set_ylabel(chosenFeatures[1][1], labelpad=20.)
+
+        ax.tick_params(direction='out', grid_color='r', grid_alpha=0.5)
+
+        ax.xaxis.set_tick_params(rotation=90)
+        ax.yaxis.set_tick_params(rotation=90)
+
+        xTickValues = list(set(encodedLabels[chosenFeatures[0][0]]))
+        yTickValues = list(set(encodedLabels[chosenFeatures[1][0]]))
+        # X TICKS
+        ax.set_xticks(takespread(xTickValues, 25))
+        ax.set_xticklabels(
+            encoders[chosenFeatures[0][0]].inverse_transform(
+                takespread(xTickValues, 25)))
+
+        # Y TICKS
+        ax.set_yticks(takespread(yTickValues, 25))
+        ax.set_yticklabels(
+            encoders[chosenFeatures[1][0]].inverse_transform(
+                takespread(yTickValues, 25)))
+
+        # count the occurrences of each point
+        c = Counter(zip(plottable_X[0], plottable_X[1]))
+        # create a list of the sizes, here multiplied by 10 for scale
+        density = [
+            10 + ((2000) / rowCount) * c[(xx, yy)]
+            for xx, yy in zip(plottable_X[0], plottable_X[1])
+        ]
+
+        for i in range(0, nClusters):
+            color = colors[i % 10]
+            marker = markers[i % len(markers)]
+            ax.scatter(xs=plottable_X[0, y_km == i],
+                        ys=plottable_X[1, y_km == i],
+                        c=color,
+                        marker=marker,
+                        edgecolor='black',
+                        label='cluster ' + str(i),
+                        s=50)
 
     # plot the centroids
     if len(chosenFeatures) == 3:
         ax.scatter(xs=km.cluster_centers_[:, 0],
                    ys=km.cluster_centers_[:, 1],
                    zs=km.cluster_centers_[:, 2],
-                   s=250,
+                   s=350,
                    marker='*',
                    c='red',
                    edgecolor='black',
@@ -216,7 +275,7 @@ def main(argv):
     elif len(chosenFeatures) == 2:
         ax.scatter(xs=km.cluster_centers_[:, 0],
                    ys=km.cluster_centers_[:, 1],
-                   s=250,
+                   s=350,
                    marker='*',
                    c='red',
                    edgecolor='black',
