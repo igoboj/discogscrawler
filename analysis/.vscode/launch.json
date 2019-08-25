@@ -13,6 +13,14 @@
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
             },
+            "args": [
+                "-i",
+                "../crawler/dataset.txt",
+                "-k",
+                "4",
+                "-l",
+                "1000",
+            ]
         }
     ]
 }

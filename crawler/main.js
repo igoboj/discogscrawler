@@ -1,7 +1,5 @@
-
 const router = require('./router');
 const readline = require('readline');
-const sql = require("mssql");
 const log = require("./log");
 const RequestQueue = require("./requestQueue");
 const DBContext = require('./dbContext');
@@ -20,24 +18,7 @@ function askQuestion(query) {
 }
 
 (async () => {
-    //ans = await askQuestion("Are you sure you want to deploy to PRODUCTION? ");
-
-    var config = {
-        user: 'sa',
-        password: 'Password1!',
-        server: 'localhost',
-        database: 'discogs',
-        pool: {
-            max: 100,
-            min: 1
-        }
-    };
-
-    const connectionPoolPromise = new sql.ConnectionPool(config);
-    connectionPoolPromise.on('error', (err) => {
-        if (err) console.log(err);
-    });
-    await connectionPoolPromise.connect();
+    let connectionPool = await DBContext.initialize();
 
     log.info('Starting crawler.');
     const baseDomain = 'https://www.discogs.com';
@@ -52,13 +33,12 @@ function askQuestion(query) {
     const handlePageFunction = async (context) => {
         log.info(`Processing ${context.url}`);
 
-        await URLrouter(context, connectionPoolPromise);
+        await URLrouter(context, connectionPool);
         const queueStats = RequestQueue.stats();
         log.info(`Queue status: ${JSON.stringify(queueStats)}`);
     }
 
     RequestQueue.initialize(handlePageFunction, sources, { maxRetries: 10, concurrency: 10 });
-    DBContext.initialize(connectionPoolPromise);
 
     const startTime = new Date();
     log.info('<<<<<<<<<<>>>>>>>>>>');
@@ -75,7 +55,7 @@ function askQuestion(query) {
         log.info(`Total duration: ${(endTime - startTime) / 1000}s`);
         log.info(`Total time spent on timeouts was: ${router.getTotalTimeoutTime()}s`)
         log.info('<<<<<<<<<<>>>>>>>>>>');
-        connectionPoolPromise.close();
+        connectionPool.close();
         RequestQueue.dump();
     });
 

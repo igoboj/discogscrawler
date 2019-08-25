@@ -1,4 +1,3 @@
-
 const sql = require("mssql");
 const log = require("./log");
 const HashMap = require('hashmap');
@@ -7,7 +6,24 @@ const HashMap = require('hashmap');
 let genres = new HashMap();
 let styles = new HashMap();
 
-async function initialize(connectionPool) {
+async function initialize() {
+    var config = {
+        user: 'sa',
+        password: 'Password1!',
+        server: 'localhost',
+        database: 'discogs',
+        pool: {
+            max: 100,
+            min: 1
+        }
+    };
+
+    const connectionPool = new sql.ConnectionPool(config);
+    connectionPool.on('error', (err) => {
+        if (err) console.log(err);
+    });
+    await connectionPool.connect();
+
     let sqlRequest = connectionPool.request();
     await sqlRequest
         .query('SELECT * FROM Genre')
@@ -35,6 +51,8 @@ async function initialize(connectionPool) {
         .catch(err => {
             log.error(`Error while retrieving Styles: ${err.message}`);
         });
+
+    return connectionPool;
 }
 
 async function insertRelease(connectionPool, releaseInfo) {
@@ -154,6 +172,23 @@ async function getMaster(connectionPool, masterId) {
         });
 }
 
+async function getReleases(connectionPool) {
+    log.info("Fetching Releases.");
+    const sqlRequest = connectionPool.request();
+    return await sqlRequest
+        .query('SELECT Published, TrackCount, RatingCount, RatingValue, Format, ReleaseGenre.GenreName, ReleaseStyle.StyleName ' + 
+        'FROM Release ' + 
+        'INNER JOIN ReleaseGenre ON Release.IdRelease = ReleaseGenre.IdRelease ' +
+        'INNER JOIN ReleaseStyle ON Release.IdRelease = ReleaseStyle.IdRelease ')
+        .then(async result => {
+            if (result.recordset.length != 0) {
+                return result.recordset;
+            }
+        })
+        .catch(err => {
+            log.error(`Error while getting data: ${err.message}`);
+        });
+}
 
 async function insertGenresStyles(connectionPool, tableName, isMaster, name, id) {
     if (name && id) {
@@ -210,3 +245,4 @@ exports.insertOrUpdateMaster = insertOrUpdateMaster;
 exports.insertRelease = insertRelease;
 exports.initialize = initialize;
 exports.getMaster = getMaster;
+exports.getReleases = getReleases;
