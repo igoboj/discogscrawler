@@ -10,5 +10,6 @@ Running the crawler:
 2. Specify the root country to start the crawl from
 3. node main.js
 
-
 PowerBI Dashboard: https://app.powerbi.com/groups/me/dashboards/7e81f33c-09b0-4edc-a552-1ff860c8aeda
+
+kmeans.py compilation command: pyinstaller -F --hidden-import="sklearn.utils._cython_blas" --hidden-import="sklearn.neighbors.typedefs" --hidden-import="sklearn.neighbors.quad_tree" --hidden-import="sklearn.tree._utils" kmeans.py
