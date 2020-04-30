@@ -9,7 +9,7 @@
 		"deferred": "^0.7.11",
 		"hashmap": "^2.3.0",
 		"ipify": "^4.0.0",
-		"jquery": "^3.4.1",
+		"jquery": "^3.5.0",
 		"mssql": "^5.1.0",
 		"puppeteer": "^1.17.0",
 		"queue": "^6.0.1",
